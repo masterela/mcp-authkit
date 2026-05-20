@@ -230,15 +230,24 @@ class OAuthProvider:
 
         Parameters
         ----------
-        authorization_url   Full URL of the provider's authorization endpoint.
-        token_url           Full URL of the provider's token endpoint.
-        client_id           OAuth2 client ID.
-        client_secret       OAuth2 client secret.
-        scope               Space-separated scope string.
-        http_verify         Passed as ``verify=`` to httpx for the token exchange.
-        token_store         Optional persistent store override.
-        pending_store       Optional pending store override.
-        All other params are the same as ``OAuthProvider.__init__``.
+        authorization_url
+            Full URL of the provider's authorization endpoint.
+        token_url
+            Full URL of the provider's token endpoint.
+        client_id
+            OAuth2 client ID.
+        client_secret
+            OAuth2 client secret.
+        scope
+            Space-separated scope string.
+        http_verify
+            Passed as ``verify=`` to httpx for the token exchange request.
+        token_store
+            Optional persistent store override.
+        pending_store
+            Optional pending store override.
+        name, redirect_uri, user_context, refresh_token_fn, token_timeout
+            Same as ``OAuthProvider.__init__``.
         """
 
         def _build_auth_url(state: str, redir: str) -> str:

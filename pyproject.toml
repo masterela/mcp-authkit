@@ -53,6 +53,8 @@ dev = [
     "ruff>=0.9",
     "mypy>=1.11",
     "fakeredis>=2.0",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
 ]
 
 [tool.ruff]
