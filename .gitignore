@@ -17,3 +17,4 @@ uv.lock
 # ── Local scratch ─────────────────────────────────────────────────────────────
 tmp/
 experimental/
+.coverage
