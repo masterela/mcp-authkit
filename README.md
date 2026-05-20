@@ -79,8 +79,6 @@ app.add_middleware(
     server_base_url=SERVER_URL,
     open_paths=(
         "/.well-known", "/health", "/register",
-        github_oauth.callback_path,
-        *confluence_creds.open_paths,
     ),
 )
 ```
