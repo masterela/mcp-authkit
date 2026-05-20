@@ -70,7 +70,14 @@ class FileTokenStore(TokenStore):
             logger.debug("FileTokenStore.get sub=%r → hit", sub)
             return result
         except Exception as exc:
-            logger.warning("FileTokenStore: decrypt failed for sub=%r: %s", sub[:8], exc)
+            logger.warning(
+                "FileTokenStore: could not decrypt entry for sub=%r (%s). "
+                "This usually means the encryption key changed. "
+                "The stale entry will be removed — the user will be re-prompted once.",
+                sub[:8],
+                exc,
+            )
+            p.unlink(missing_ok=True)
             return None
 
     async def set(self, sub: str, value: dict) -> None:

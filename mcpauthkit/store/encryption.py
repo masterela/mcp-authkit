@@ -63,7 +63,9 @@ def _build_fernet() -> Fernet:
         "An ephemeral encryption key has been generated. "
         "Stored tokens and credentials will NOT survive a server restart and "
         "cannot be shared across replicas. "
-        "Set STORAGE_ENCRYPTION_KEY (or _PATH) for persistence."
+        "To persist credentials across restarts, generate a stable key and export it:\n"
+        '  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n'
+        "Then set:  export STORAGE_ENCRYPTION_KEY=<key>"
     )
     return Fernet(generated)
 

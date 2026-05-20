@@ -60,7 +60,14 @@ class RedisTokenStore(TokenStore):
             logger.debug("RedisTokenStore.get sub=%r → hit", sub)
             return result
         except Exception as exc:
-            logger.warning("RedisTokenStore: decrypt failed for sub=%r: %s", sub[:8], exc)
+            logger.warning(
+                "RedisTokenStore: could not decrypt entry for sub=%r (%s). "
+                "This usually means the encryption key changed. "
+                "The stale entry will be removed — the user will be re-prompted once.",
+                sub[:8],
+                exc,
+            )
+            await self._r.delete(k)
             return None
 
     async def set(self, sub: str, value: dict) -> None:
