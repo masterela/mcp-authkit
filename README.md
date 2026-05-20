@@ -27,6 +27,7 @@ pip install "mcp-authkit[redis]"
 
 ---
 
+<!-- --8<-- [start:quickstart] -->
 ## Quick start
 
 ### Step 1 — Declare `current_user`
@@ -106,6 +107,7 @@ async def list_pages(ctx: Context, space: str) -> str:
     pat = creds.get_credentials()["pat"]
     ...
 ```
+<!-- --8<-- [end:quickstart] -->
 
 ---
 
