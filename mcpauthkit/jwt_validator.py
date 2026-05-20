@@ -30,6 +30,22 @@ class JwtFailReason(Enum):
 
 
 async def _get_oidc_config(issuer_url: str) -> dict:
+    """Fetch and cache the OIDC provider metadata document.
+
+    Requests ``{issuer_url}/.well-known/openid-configuration`` and caches the
+    response for ``CACHE_TTL`` seconds.  Subsequent calls within the TTL window
+    return the cached value without making an HTTP request.
+
+    Parameters
+    ----------
+    issuer_url
+        Base URL of the OIDC issuer (trailing slash stripped automatically).
+
+    Returns
+    -------
+    dict
+        The parsed ``openid-configuration`` document.
+    """
     now = time.monotonic()
     if issuer_url in _oidc_cache:
         ts, data = _oidc_cache[issuer_url]
@@ -45,6 +61,21 @@ async def _get_oidc_config(issuer_url: str) -> dict:
 
 
 async def _get_jwks(jwks_uri: str) -> dict:
+    """Fetch and cache the JSON Web Key Set from the provider's ``jwks_uri``.
+
+    The result is cached for ``CACHE_TTL`` seconds so repeated requests in the
+    same process do not hit the OIDC provider on every incoming token.
+
+    Parameters
+    ----------
+    jwks_uri
+        URL of the JWKS endpoint as returned by the OIDC configuration document.
+
+    Returns
+    -------
+    dict
+        The parsed JWKS document (``{"keys": [...]}``).
+    """
     now = time.monotonic()
     if jwks_uri in _jwks_cache:
         ts, data = _jwks_cache[jwks_uri]

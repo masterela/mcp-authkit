@@ -1,0 +1,56 @@
+site_name: mcp-authkit
+site_url: https://masterela.github.io/mcp-authkit/
+site_description: Pluggable OAuth 2.0 + credentials elicitation library for FastMCP servers
+repo_url: https://github.com/masterela/mcp-authkit
+repo_name: masterela/mcp-authkit
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_if_no_docstring: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - API Reference:
+    - Middleware: api/middleware.md
+    - Routes & well-known: api/routes.md
+    - JWT validator: api/jwt.md
+    - OAuthProvider: api/oauth.md
+    - CredentialsProvider: api/credentials.md
+    - Storage: api/store.md

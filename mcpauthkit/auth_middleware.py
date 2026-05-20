@@ -71,6 +71,7 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         server_base_url: str,
         open_paths: tuple[str, ...] = (),
     ) -> None:
+        """Initialise the middleware; see class docstring for parameter descriptions."""
         super().__init__(app)
         self._issuer_url = issuer_url
         self._current_user = current_user
@@ -78,6 +79,21 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         self._open_paths = open_paths
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        """Process a single request: validate the Bearer token or pass through open paths.
+
+        Returns a ``401 Unauthorized`` JSON response (with a standards-compliant
+        ``WWW-Authenticate: Bearer`` header) when the token is absent, malformed,
+        has the wrong issuer, or carries an invalid signature.  Returns a
+        ``401`` with ``error=invalid_token`` when the token has expired, so
+        the client can use its refresh token.
+
+        Parameters
+        ----------
+        request
+            The incoming Starlette / FastAPI request.
+        call_next
+            The next ASGI handler in the middleware chain.
+        """
         logger.debug(
             "→ %s %s  auth=%s  open=%s",
             request.method,
@@ -125,6 +141,7 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
     # ── Internal ─────────────────────────────────────────────────────────────────
 
     def _is_open(self, path: str) -> bool:
+        """Return True if *path* starts with any of the configured open path prefixes."""
         return any(path.startswith(p) for p in self._open_paths)
 
     def _unauthorized(self) -> JSONResponse:
