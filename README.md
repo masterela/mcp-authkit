@@ -27,9 +27,23 @@ pip install "mcp-authkit[redis]"
 
 ---
 
+<!-- --8<-- [start:quickstart] -->
 ## Quick start
 
-### Leg 1 — OIDC JWT middleware
+### Step 1 — Declare `current_user`
+
+The library is wired together through a single [`ContextVar`](https://docs.python.org/3/library/contextvars.html) that **you** create and own. Declare it once at module level in your server file and pass it to everything:
+
+```python
+from contextvars import ContextVar
+
+# You create this. The middleware writes it; providers read it.
+current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
+```
+
+Python scopes `ContextVar` per async task automatically, so concurrent requests never interfere.
+
+### Step 2 — Add the JWT middleware (Leg 1)
 
 ```python
 from mcpauthkit.auth_middleware import JwtAuthMiddleware
@@ -50,7 +64,7 @@ app.add_middleware(
 )
 ```
 
-### Leg 2a — third-party OAuth token
+### Step 3 — Gate a tool behind a third-party OAuth token (Leg 2a)
 
 ```python
 from mcpauthkit import OAuthProvider
@@ -74,7 +88,7 @@ async def list_prs(ctx: Context, repo: str) -> str:
     ...
 ```
 
-### Leg 2b — PAT / API key form
+### Step 4 — Gate a tool behind a PAT / API key form (Leg 2b)
 
 ```python
 from mcpauthkit import CredentialsProvider
@@ -93,6 +107,7 @@ async def list_pages(ctx: Context, space: str) -> str:
     pat = creds.get_credentials()["pat"]
     ...
 ```
+<!-- --8<-- [end:quickstart] -->
 
 ---
 

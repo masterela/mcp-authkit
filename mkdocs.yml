@@ -30,6 +30,8 @@ theme:
     - content.code.copy
 
 markdown_extensions:
+  - pymdownx.snippets:
+      base_path: .
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -54,6 +56,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Quick start: quickstart.md
   - Architecture: architecture.md
   - API Reference:
     - Middleware: api/middleware.md
