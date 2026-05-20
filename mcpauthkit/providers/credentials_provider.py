@@ -157,6 +157,7 @@ class CredentialsProvider:
         doc: str | None = None,
         token_timeout: float = 300.0,
     ) -> None:
+        """Initialise the provider; see class docstring for parameter descriptions."""
         self.name = name
         self.open_paths = [
             f"/credentials/{name}/entry",
@@ -371,6 +372,7 @@ class CredentialsProvider:
     # ── Internal ───────────────────────────────────────────────────────────────
 
     def _build_entry_url(self, entry_token: str) -> str:
+        """Return the one-time form URL for the given entry token."""
         return f"{self._server_base_url}/credentials/{self.name}/entry?t={entry_token}"
 
     async def _new_pending_entry(

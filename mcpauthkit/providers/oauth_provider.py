@@ -158,6 +158,7 @@ class OAuthProvider:
         refresh_token_fn: Callable[..., Coroutine[Any, Any, ExchangeResult]] | None = None,
         token_timeout: float = 120.0,
     ) -> None:
+        """Initialise the provider; see class docstring for parameter descriptions."""
         self.name = name
         self.callback_path = urlparse(redirect_uri).path
 
