@@ -115,7 +115,14 @@ sequenceDiagram
 
 The middleware discovers the `jwks_uri` from `{issuer_url}/.well-known/openid-configuration` (cached 10 minutes) and validates signatures against the JWKS (also cached 10 minutes). Supported algorithms: RS256/384/512, PS256/384/512, ES256/384/512, EdDSA.
 
-The validated claims (`sub`, `preferred_username`, `email`, `name`, `iss`, `exp`) are written into a `ContextVar[dict]` (`current_user`) that any tool can read directly — no FastAPI dependency injection needed inside MCP tools.
+The validated claims (`sub`, `preferred_username`, `email`, `name`, `iss`, `exp`) are written into a `ContextVar[dict | None]` that you declare once at module level and pass to both the middleware and the providers:
+
+```python
+from contextvars import ContextVar
+current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
+```
+
+The middleware **writes** it; the Leg 2 providers **read** the `sub` field from it to key per-user token storage. Python's `ContextVar` is scoped per async task automatically, so concurrent requests never interfere. Any tool can also call `current_user.get()` directly — no FastAPI dependency injection needed.
 
 **The server never sees or stores the primary access token** — it only validates signatures.
 

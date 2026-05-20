@@ -31,9 +31,15 @@ pip install "mcp-authkit[redis]"
 
 ### Leg 1 — OIDC JWT middleware
 
+`current_user` is a standard Python [`ContextVar`](https://docs.python.org/3/library/contextvars.html) you declare once at module level. The middleware writes the validated JWT claims into it on every request; the Leg 2 providers read the `sub` claim from it to key cached tokens per user.
+
 ```python
+from contextvars import ContextVar
 from mcpauthkit.auth_middleware import JwtAuthMiddleware
 from mcpauthkit.auth_routes import oauth_meta_router
+
+# Declare once at module level — shared by middleware + all providers
+current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
 
 app.include_router(oauth_meta_router(
     server_base_url=SERVER_URL,
