@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/masterela/mcp-authkit/actions/workflows/ci.yml/badge.svg)](https://github.com/masterela/mcp-authkit/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/masterela/mcp-authkit/branch/main/graph/badge.svg)](https://codecov.io/gh/masterela/mcp-authkit)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://masterela.github.io/mcp-authkit/)
 [![PyPI version](https://img.shields.io/pypi/v/mcp-authkit)](https://pypi.org/project/mcp-authkit/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-authkit)](https://pypi.org/project/mcp-authkit/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
