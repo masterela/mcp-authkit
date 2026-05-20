@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 from contextvars import ContextVar
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -67,7 +66,12 @@ class MockContext:
 # ── Variables used in tests ───────────────────────────────────────────────────
 
 _VARIABLES = {
-    "pat": {"label": "Personal Access Token", "type": "password", "hint": "ATBBxyz", "required": True},
+    "pat": {
+        "label": "Personal Access Token",
+        "type": "password",
+        "hint": "ATBBxyz",
+        "required": True,
+    },
     "base_url": {"label": "Base URL", "type": "url", "hint": "https://...", "required": False},
 }
 

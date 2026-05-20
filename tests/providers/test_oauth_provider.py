@@ -150,7 +150,8 @@ async def test_get_valid_token_miss(provider):
 
 async def test_get_valid_token_unexpired(provider):
     await provider._token_store.set(
-        "alice", {"access_token": "fresh", "stored_at": time.time(), "expires_at": time.time() + 3600}
+        "alice",
+        {"access_token": "fresh", "stored_at": time.time(), "expires_at": time.time() + 3600},
     )
     assert await provider._get_valid_token("alice") == "fresh"
 
@@ -232,7 +233,8 @@ async def test_try_silent_refresh_no_entry_returns_none(provider):
 
 async def test_get_or_refresh_token_valid_token(provider):
     await provider._token_store.set(
-        "alice", {"access_token": "valid", "stored_at": time.time(), "expires_at": time.time() + 3600}
+        "alice",
+        {"access_token": "valid", "stored_at": time.time(), "expires_at": time.time() + 3600},
     )
     assert await provider._get_or_refresh_token("alice") == "valid"
 
