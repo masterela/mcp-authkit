@@ -29,24 +29,24 @@ instance that *receives* the OAuth callback:
   instance, ``send_elicit_complete`` is called by the waiter once
   ``wait_for_result`` returns.
 """
+
 from __future__ import annotations
 
-import asyncio
 import functools
 import logging
 import secrets
 import ssl
 import time
+from collections.abc import Callable, Coroutine
 from contextvars import ContextVar
-from typing import Any, Callable, Coroutine, Optional, Union
+from pathlib import Path
+from typing import Any, cast
 from urllib.parse import urlencode, urlparse
 
 import httpx
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-from pathlib import Path
-
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from mcp.server.fastmcp import Context
 from mcp.shared.exceptions import UrlElicitationRequiredError
 from mcp.types import ElicitRequestURLParams
@@ -64,6 +64,7 @@ _jinja = Environment(
 
 class _OAuthCompletionForm(BaseModel):
     """Form-mode fallback schema: user ticks this after completing the OAuth flow."""
+
     completed: bool
 
 
@@ -78,10 +79,10 @@ TokenData = dict[str, Any]
 #   str  — bare access token
 #   dict — {access_token, refresh_token?, expires_in?}
 #   None — failure
-ExchangeResult = Optional[str | dict[str, Any]]
+ExchangeResult = str | dict[str, Any] | None
 
 
-def _parse_token_data(result: ExchangeResult, stored_at: float) -> Optional[TokenData]:
+def _parse_token_data(result: ExchangeResult, stored_at: float) -> TokenData | None:
     """Normalise an exchange_code / refresh_token_fn result into a TokenData entry."""
     if result is None:
         return None
@@ -151,10 +152,10 @@ class OAuthProvider:
         build_auth_url: Callable[[str, str], str],
         exchange_code: Callable[..., Coroutine[Any, Any, ExchangeResult]],
         redirect_uri: str,
-        user_context: ContextVar[Optional[dict]],
-        token_store: Optional[TokenStore] = None,
-        pending_store: Optional[PendingStore] = None,
-        refresh_token_fn: Optional[Callable[..., Coroutine[Any, Any, ExchangeResult]]] = None,
+        user_context: ContextVar[dict | None],
+        token_store: TokenStore | None = None,
+        pending_store: PendingStore | None = None,
+        refresh_token_fn: Callable[..., Coroutine[Any, Any, ExchangeResult]] | None = None,
         token_timeout: float = 120.0,
     ) -> None:
         self.name = name
@@ -173,6 +174,7 @@ class OAuthProvider:
             self._pending_store: PendingStore = pending_store
         else:
             from ..store.factory import create_stores
+
             ts, ps = create_stores(namespace=name)
             self._token_store = token_store if token_store is not None else ts
             self._pending_store = pending_store if pending_store is not None else ps
@@ -182,7 +184,7 @@ class OAuthProvider:
         self._sessions: dict[str, dict[str, Any]] = {}
 
         # Per-request token accessor (set by @require_token decorator)
-        self._current_token: ContextVar[Optional[str]] = ContextVar(
+        self._current_token: ContextVar[str | None] = ContextVar(
             f"elicit_oauth_{name}_token", default=None
         )
 
@@ -199,13 +201,13 @@ class OAuthProvider:
         client_secret: str,
         scope: str,
         redirect_uri: str,
-        user_context: ContextVar[Optional[dict]],
-        token_store: Optional[TokenStore] = None,
-        pending_store: Optional[PendingStore] = None,
-        refresh_token_fn: Optional[Callable[..., Coroutine[Any, Any, ExchangeResult]]] = None,
+        user_context: ContextVar[dict | None],
+        token_store: TokenStore | None = None,
+        pending_store: PendingStore | None = None,
+        refresh_token_fn: Callable[..., Coroutine[Any, Any, ExchangeResult]] | None = None,
         token_timeout: float = 120.0,
-        http_verify: Union[bool, ssl.SSLContext, str] = True,
-    ) -> "OAuthProvider":
+        http_verify: bool | ssl.SSLContext | str = True,
+    ) -> OAuthProvider:
         """
         Convenience factory for any standard OAuth2 Authorization Code provider
         (GitHub, Google, Jira, Entra, etc.).
@@ -237,14 +239,21 @@ class OAuthProvider:
         pending_store       Optional pending store override.
         All other params are the same as ``OAuthProvider.__init__``.
         """
+
         def _build_auth_url(state: str, redir: str) -> str:
-            return authorization_url + "?" + urlencode({
-                "client_id": client_id,
-                "redirect_uri": redir,
-                "scope": scope,
-                "state": state,
-                "response_type": "code",
-            })
+            return (
+                authorization_url
+                + "?"
+                + urlencode(
+                    {
+                        "client_id": client_id,
+                        "redirect_uri": redir,
+                        "scope": scope,
+                        "state": state,
+                        "response_type": "code",
+                    }
+                )
+            )
 
         async def _exchange_code(code: str, state: str, redir: str) -> ExchangeResult:
             async with httpx.AsyncClient(
@@ -264,14 +273,16 @@ class OAuthProvider:
             if resp.status_code != 200:
                 logger.error(
                     "%s token exchange failed HTTP %s: %s",
-                    name, resp.status_code, resp.text[:300],
+                    name,
+                    resp.status_code,
+                    resp.text[:300],
                 )
                 return None
             data = resp.json()
             if not data.get("access_token"):
                 logger.error("%s token exchange: no access_token in response: %s", name, data)
                 return None
-            return data
+            return cast(dict[str, Any], data)
 
         return cls(
             name=name,
@@ -287,7 +298,7 @@ class OAuthProvider:
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    def get_token(self) -> Optional[str]:
+    def get_token(self) -> str | None:
         """Return the access token for the current tool invocation.
         Only meaningful inside a @require_token()-decorated function."""
         return self._current_token.get()
@@ -326,6 +337,7 @@ class OAuthProvider:
             False (default): tool call stays open during the OAuth flow.
             True: raises UrlElicitationRequiredError; client must retry.
         """
+
         def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             async def wrapper(ctx: Context, *args: Any, **kwargs: Any) -> Any:
@@ -355,6 +367,7 @@ class OAuthProvider:
                     self._current_token.reset(reset)
 
             return wrapper
+
         return decorator
 
     def register(self, app: FastAPI) -> None:
@@ -371,10 +384,10 @@ class OAuthProvider:
         @app.get(provider.callback_path, include_in_schema=False)
         async def _oauth_callback(
             request: Request,
-            code: Optional[str] = None,
-            state: Optional[str] = None,
-            error: Optional[str] = None,
-            error_description: Optional[str] = None,
+            code: str | None = None,
+            state: str | None = None,
+            error: str | None = None,
+            error_description: str | None = None,
         ):
             name = provider.name.capitalize()
 
@@ -413,7 +426,7 @@ class OAuthProvider:
 
     # ── Internal: token validity & refresh ────────────────────────────────────
 
-    async def _get_valid_token(self, sub: str) -> Optional[str]:
+    async def _get_valid_token(self, sub: str) -> str | None:
         """Return the stored token if it exists and has not expired (30 s buffer)."""
         entry = await self._token_store.get(sub)
         if not entry:
@@ -421,12 +434,14 @@ class OAuthProvider:
             return None
         expires_at = entry.get("expires_at")
         if expires_at is not None and time.time() >= expires_at - 30:
-            logger.debug("%s _get_valid_token sub=%r → expired (expires_at=%s)", self.name, sub, expires_at)
+            logger.debug(
+                "%s _get_valid_token sub=%r → expired (expires_at=%s)", self.name, sub, expires_at
+            )
             return None  # expired (or about to expire)
         logger.debug("%s _get_valid_token sub=%r → valid", self.name, sub)
-        return entry["access_token"]
+        return cast(str, entry["access_token"])
 
-    async def _try_silent_refresh(self, sub: str) -> Optional[str]:
+    async def _try_silent_refresh(self, sub: str) -> str | None:
         """
         Attempt a silent token refresh using a stored refresh_token.
         Returns the new access token on success, None on failure.
@@ -457,9 +472,9 @@ class OAuthProvider:
 
         await self._token_store.set(sub, new_entry)
         logger.info("%s token refreshed for sub='%s'", self.name, sub)
-        return new_entry["access_token"]
+        return cast(str, new_entry["access_token"])
 
-    async def _get_or_refresh_token(self, sub: str) -> Optional[str]:
+    async def _get_or_refresh_token(self, sub: str) -> str | None:
         """Return a valid token, trying silent refresh if expired."""
         token = await self._get_valid_token(sub)
         if token:
@@ -467,16 +482,18 @@ class OAuthProvider:
             return token
         entry = await self._token_store.get(sub)
         if self._refresh_token_fn and entry and entry.get("refresh_token"):
-            logger.debug("%s _get_or_refresh_token sub=%r → attempting silent refresh", self.name, sub)
+            logger.debug(
+                "%s _get_or_refresh_token sub=%r → attempting silent refresh", self.name, sub
+            )
             return await self._try_silent_refresh(sub)
-        logger.debug("%s _get_or_refresh_token sub=%r → no token, elicitation needed", self.name, sub)
+        logger.debug(
+            "%s _get_or_refresh_token sub=%r → no token, elicitation needed", self.name, sub
+        )
         return None
 
     # ── Internal: elicitation — blocking mode ─────────────────────────────────
 
-    async def _ensure_token_blocking(
-        self, ctx: Context, sub: str, username: str
-    ) -> Optional[str]:
+    async def _ensure_token_blocking(self, ctx: Context, sub: str, username: str) -> str | None:
         """
         Ensure a valid token via ctx.elicit_url() + PendingStore signal.
         The tool call stays open until the OAuth callback fires or timeout.
@@ -491,16 +508,17 @@ class OAuthProvider:
         elicitation_id = secrets.token_urlsafe(16)
         auth_url = self._build_auth_url(state, self._redirect_uri)
 
-        await self._pending_store.create(
-            state, {"sub": sub}, ttl=int(self._token_timeout) + 60
-        )
+        await self._pending_store.create(state, {"sub": sub}, ttl=int(self._token_timeout) + 60)
         self._sessions[state] = {"session": ctx.session, "elicitation_id": elicitation_id}
         logger.info(
             "%s OAuth initiated for sub='%s' state='%s' elicitation_id='%s'",
-            self.name, sub, state, elicitation_id,
+            self.name,
+            sub,
+            state,
+            elicitation_id,
         )
 
-        signal: Optional[dict] = None
+        signal: dict | None = None
         try:
             result = await ctx.elicit_url(
                 message=(
@@ -555,20 +573,17 @@ class OAuthProvider:
                 await ctx.session.send_elicit_complete(elicitation_id)
                 logger.info(
                     "%s sent elicit_complete (waiter) elicitation_id='%s'",
-                    self.name, elicitation_id,
+                    self.name,
+                    elicitation_id,
                 )
             except Exception as exc:
-                logger.warning(
-                    "%s send_elicit_complete (waiter) failed: %s", self.name, exc
-                )
+                logger.warning("%s send_elicit_complete (waiter) failed: %s", self.name, exc)
 
         return await self._get_valid_token(sub)
 
     # ── Internal: elicitation — fail-fast mode ────────────────────────────────
 
-    async def _ensure_token_fail_fast(
-        self, ctx: Context, sub: str, username: str
-    ) -> Optional[str]:
+    async def _ensure_token_fail_fast(self, ctx: Context, sub: str, username: str) -> str | None:
         """
         Ensure a valid token, raising UrlElicitationRequiredError if absent.
         The tool call fails immediately; the client must retry after OAuth.
@@ -582,9 +597,7 @@ class OAuthProvider:
         elicitation_id = secrets.token_urlsafe(16)
         auth_url = self._build_auth_url(state, self._redirect_uri)
 
-        await self._pending_store.create(
-            self.name, sub,
-        )
+        await self._pending_store.create(state, {"sub": sub}, ttl=int(self._token_timeout) + 60)
 
         raise UrlElicitationRequiredError(
             elicitations=[
@@ -603,7 +616,7 @@ class OAuthProvider:
 
     # ── Internal: callback handling ───────────────────────────────────────────
 
-    async def _handle_callback(self, code: str, state: str) -> Optional[str]:
+    async def _handle_callback(self, code: str, state: str) -> str | None:
         """
         Exchange the OAuth code, store the token, notify waiter + client.
         Returns the user sub on success, None on failure.
@@ -645,7 +658,8 @@ class OAuthProvider:
                 elicit_sent = True
                 logger.info(
                     "%s sent elicit_complete (callback) elicitation_id='%s'",
-                    self.name, local["elicitation_id"],
+                    self.name,
+                    local["elicitation_id"],
                 )
             except Exception as exc:
                 logger.warning(
@@ -654,12 +668,10 @@ class OAuthProvider:
 
         # Remove the pending metadata and signal the waiter (same or other instance)
         await self._pending_store.pop(state)
-        await self._pending_store.set_result(
-            state, {"sub": sub, "_elicit_sent": elicit_sent}
-        )
+        await self._pending_store.set_result(state, {"sub": sub, "_elicit_sent": elicit_sent})
         return sub
 
-    async def _fail_pending(self, state: Optional[str]) -> None:
+    async def _fail_pending(self, state: str | None) -> None:
         """Unblock a waiting tool when the OAuth callback returns an error."""
         if not state:
             return

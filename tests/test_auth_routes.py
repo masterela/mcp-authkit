@@ -1,6 +1,7 @@
 """
 Tests for mcpauthkit.auth_routes — well-known OAuth metadata and DCR façade.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -17,15 +18,18 @@ CLIENT_ID = "my-mcp-client"
 @pytest.fixture()
 def client() -> TestClient:
     app = FastAPI()
-    app.include_router(oauth_meta_router(
-        server_base_url=SERVER,
-        issuer_url=ISSUER,
-        client_id=CLIENT_ID,
-    ))
+    app.include_router(
+        oauth_meta_router(
+            server_base_url=SERVER,
+            issuer_url=ISSUER,
+            client_id=CLIENT_ID,
+        )
+    )
     return TestClient(app, raise_server_exceptions=False)
 
 
 # ── Protected resource metadata (RFC 9728) ────────────────────────────────────
+
 
 def test_protected_resource_returns_200(client):
     resp = client.get("/.well-known/oauth-protected-resource")
@@ -46,6 +50,7 @@ def test_protected_resource_with_path_suffix(client):
 
 # ── Authorization server metadata (RFC 8414) ─────────────────────────────────
 
+
 def test_authorization_server_returns_200(client):
     # OIDC server unreachable → falls back to constructed defaults, still 200
     resp = client.get("/.well-known/oauth-authorization-server")
@@ -64,9 +69,14 @@ def test_authorization_server_registration_endpoint(client):
 
 def test_authorization_server_required_fields(client):
     data = client.get("/.well-known/oauth-authorization-server").json()
-    for field in ("authorization_endpoint", "token_endpoint", "jwks_uri",
-                  "response_types_supported", "grant_types_supported",
-                  "code_challenge_methods_supported"):
+    for field in (
+        "authorization_endpoint",
+        "token_endpoint",
+        "jwks_uri",
+        "response_types_supported",
+        "grant_types_supported",
+        "code_challenge_methods_supported",
+    ):
         assert field in data, f"missing field: {field}"
 
 
@@ -77,12 +87,16 @@ def test_authorization_server_pkce_supported(client):
 
 # ── DCR façade ────────────────────────────────────────────────────────────────
 
+
 def test_dcr_returns_201(client):
-    resp = client.post("/register", json={
-        "client_name": "my-app",
-        "redirect_uris": ["http://localhost/callback"],
-        "grant_types": ["authorization_code"],
-    })
+    resp = client.post(
+        "/register",
+        json={
+            "client_name": "my-app",
+            "redirect_uris": ["http://localhost/callback"],
+            "grant_types": ["authorization_code"],
+        },
+    )
     assert resp.status_code == 201
 
 

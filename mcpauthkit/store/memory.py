@@ -7,12 +7,12 @@ In-memory store implementations (single-process, no persistence).
 State is lost on server restart.  No encryption — data lives only in
 process memory.  Suitable for single-process deployments.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Optional
 
 from .base import PendingStore, TokenStore
 
@@ -25,9 +25,11 @@ class MemoryTokenStore(TokenStore):
     def __init__(self) -> None:
         self._data: dict[str, dict] = {}
 
-    async def get(self, sub: str) -> Optional[dict]:
+    async def get(self, sub: str) -> dict | None:
         result = self._data.get(sub)
-        logger.debug("MemoryTokenStore.get sub=%r → %s", sub, "hit" if result is not None else "miss")
+        logger.debug(
+            "MemoryTokenStore.get sub=%r → %s", sub, "hit" if result is not None else "miss"
+        )
         return result
 
     async def set(self, sub: str, value: dict) -> None:
@@ -61,7 +63,7 @@ class MemoryPendingStore(PendingStore):
         self._pending[key] = {**metadata, "_expires": time.monotonic() + ttl}
         self._done[key] = {"event": asyncio.Event(), "result": None}
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         entry = self._pending.get(key)
         if entry is None:
             logger.debug("MemoryPendingStore.get key=%.8s → miss", key)
@@ -73,7 +75,7 @@ class MemoryPendingStore(PendingStore):
         logger.debug("MemoryPendingStore.get key=%.8s → hit", key)
         return {k: v for k, v in entry.items() if not k.startswith("_")}
 
-    async def pop(self, key: str) -> Optional[dict]:
+    async def pop(self, key: str) -> dict | None:
         entry = self._pending.pop(key, None)
         if entry is None:
             logger.debug("MemoryPendingStore.pop key=%.8s → miss", key)
@@ -89,15 +91,17 @@ class MemoryPendingStore(PendingStore):
             done["result"] = result
             done["event"].set()
 
-    async def wait_for_result(self, key: str, timeout: float) -> Optional[dict]:
+    async def wait_for_result(self, key: str, timeout: float) -> dict | None:
         done = self._done.get(key)
         if done is None:
             logger.debug("MemoryPendingStore.wait_for_result key=%.8s → no entry", key)
             return None
-        logger.debug("MemoryPendingStore.wait_for_result key=%.8s waiting (timeout=%s)", key, timeout)
+        logger.debug(
+            "MemoryPendingStore.wait_for_result key=%.8s waiting (timeout=%s)", key, timeout
+        )
         try:
             await asyncio.wait_for(done["event"].wait(), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.debug("MemoryPendingStore.wait_for_result key=%.8s → timed out", key)
             return None
         result = done.get("result")

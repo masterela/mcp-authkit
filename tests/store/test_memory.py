@@ -1,15 +1,15 @@
 """
 Tests for MemoryTokenStore and MemoryPendingStore.
 """
+
 from __future__ import annotations
 
 import asyncio
-import pytest
 
 from mcpauthkit.store.memory import MemoryPendingStore, MemoryTokenStore
 
-
 # ── MemoryTokenStore ──────────────────────────────────────────────────────────
+
 
 async def test_get_miss():
     store = MemoryTokenStore()
@@ -50,6 +50,7 @@ async def test_users_are_isolated():
 
 
 # ── MemoryPendingStore ────────────────────────────────────────────────────────
+
 
 async def test_pending_create_then_get():
     store = MemoryPendingStore()
@@ -99,9 +100,10 @@ async def test_wait_for_result_receives_signal():
         await asyncio.sleep(0.05)
         await store.set_result("state-1", {"access_token": "tok"})
 
-    asyncio.create_task(signal())
+    task = asyncio.create_task(signal())
     result = await store.wait_for_result("state-1", timeout=2.0)
     assert result == {"access_token": "tok"}
+    await task
 
 
 async def test_wait_for_result_timeout():

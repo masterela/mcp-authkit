@@ -26,18 +26,18 @@ stores are provided, ``create_stores()`` is called automatically.
 The entry token is a one-time ``secrets.token_urlsafe(32)`` value stored in
 PendingStore with a TTL (default 300 s), preventing replay of stale requests.
 """
+
 from __future__ import annotations
 
-import asyncio
 import functools
 import logging
 import secrets
-import time
+from collections.abc import Callable
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from mcp.server.fastmcp import Context
@@ -64,10 +64,11 @@ VariableDef = dict[str, Any]
 
 class _CredentialsCompletionForm(BaseModel):
     """Form-mode fallback: user ticks this after submitting via the browser page."""
+
     submitted: bool
 
 
-def _load_doc(doc_path: Optional[str]) -> Optional[str]:
+def _load_doc(doc_path: str | None) -> str | None:
     """Return raw markdown content for the how-to guide, or None."""
     if not doc_path:
         return None
@@ -78,24 +79,27 @@ def _load_doc(doc_path: Optional[str]) -> Optional[str]:
         return None
 
 
-def _fields_for_template(variables: dict[str, "VariableDef"]) -> list[dict]:
+def _fields_for_template(variables: dict[str, VariableDef]) -> list[dict]:
     """Convert the variables dict into a flat list suitable for the Jinja2 template."""
     _input_type_map = {"password": "password", "url": "url"}
     result = []
     for var_name, var_def in variables.items():
         type_ = var_def.get("type", "string")
-        result.append({
-            "name":       var_name,
-            "label":      var_def.get("label", var_name),
-            "type":       type_,
-            "input_type": _input_type_map.get(type_, "text"),
-            "hint":       var_def.get("hint", ""),
-            "required":   var_def.get("required", True),
-        })
+        result.append(
+            {
+                "name": var_name,
+                "label": var_def.get("label", var_name),
+                "type": type_,
+                "input_type": _input_type_map.get(type_, "text"),
+                "hint": var_def.get("hint", ""),
+                "required": var_def.get("required", True),
+            }
+        )
     return result
 
 
 # ── CredentialsProvider ────────────────────────────────────────────────────────
+
 
 class CredentialsProvider:
     """
@@ -146,11 +150,11 @@ class CredentialsProvider:
         self,
         name: str,
         variables: dict[str, VariableDef],
-        user_context: ContextVar[Optional[dict]],
+        user_context: ContextVar[dict | None],
         server_base_url: str,
-        creds_store: Optional[TokenStore] = None,
-        pending_store: Optional[PendingStore] = None,
-        doc: Optional[str] = None,
+        creds_store: TokenStore | None = None,
+        pending_store: PendingStore | None = None,
+        doc: str | None = None,
         token_timeout: float = 300.0,
     ) -> None:
         self.name = name
@@ -163,7 +167,7 @@ class CredentialsProvider:
         self._user_context = user_context
         self._server_base_url = server_base_url.rstrip("/")
         self._token_timeout = token_timeout
-        self._doc_md: Optional[str] = _load_doc(doc)
+        self._doc_md: str | None = _load_doc(doc)
 
         # Stores — lazy-init from env vars if not injected
         if creds_store is not None and pending_store is not None:
@@ -171,6 +175,7 @@ class CredentialsProvider:
             self._pending_store: PendingStore = pending_store
         else:
             from ..store.factory import create_stores
+
             ts, ps = create_stores(namespace=name)
             self._creds_store = creds_store if creds_store is not None else ts
             self._pending_store = pending_store if pending_store is not None else ps
@@ -179,13 +184,13 @@ class CredentialsProvider:
         self._sessions: dict[str, dict[str, Any]] = {}
 
         # Per-request credentials (set by @require_credentials decorator)
-        self._current_creds: ContextVar[Optional[dict[str, str]]] = ContextVar(
+        self._current_creds: ContextVar[dict[str, str] | None] = ContextVar(
             f"credentials_{name}", default=None
         )
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    def get_credentials(self) -> Optional[dict[str, str]]:
+    def get_credentials(self) -> dict[str, str] | None:
         """Return the credentials dict for the current tool invocation.
         Only meaningful inside a @require_credentials()-decorated function."""
         return self._current_creds.get()
@@ -215,6 +220,7 @@ class CredentialsProvider:
             False (default): tool call stays open during the credential form flow.
             True: raises UrlElicitationRequiredError; client must retry.
         """
+
         def decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             async def wrapper(ctx: Context, *args: Any, **kwargs: Any) -> Any:
@@ -224,7 +230,9 @@ class CredentialsProvider:
 
                 sub = user.get("sub", "")
                 username = user.get("preferred_username", sub)
-                logger.debug("%s require_credentials: sub=%r fail_fast=%s", self.name, sub, fail_fast)
+                logger.debug(
+                    "%s require_credentials: sub=%r fail_fast=%s", self.name, sub, fail_fast
+                )
 
                 if fail_fast:
                     creds = await self._ensure_credentials_fail_fast(ctx, sub, username)
@@ -244,6 +252,7 @@ class CredentialsProvider:
                     self._current_creds.reset(reset)
 
             return wrapper
+
         return decorator
 
     def register(self, app: FastAPI) -> None:
@@ -257,7 +266,7 @@ class CredentialsProvider:
         name_cap = provider.name.capitalize()
 
         @app.get(f"/credentials/{provider.name}/entry", include_in_schema=False)
-        async def _entry_page(t: Optional[str] = None):
+        async def _entry_page(t: str | None = None):
             if not t:
                 return HTMLResponse(
                     _jinja.get_template("credentials_error.html").render(
@@ -276,9 +285,7 @@ class CredentialsProvider:
                     status_code=400,
                 )
 
-            submit_url = (
-                f"{provider._server_base_url}/credentials/{provider.name}/submit?t={t}"
-            )
+            submit_url = f"{provider._server_base_url}/credentials/{provider.name}/submit?t={t}"
             return HTMLResponse(
                 _jinja.get_template("credentials_entry.html").render(
                     provider_name=name_cap,
@@ -289,7 +296,7 @@ class CredentialsProvider:
             )
 
         @app.post(f"/credentials/{provider.name}/submit", include_in_schema=False)
-        async def _submit_credentials(request: Request, t: Optional[str] = None):
+        async def _submit_credentials(request: Request, t: str | None = None):
             if not t:
                 return HTMLResponse(
                     _jinja.get_template("credentials_error.html").render(
@@ -330,7 +337,9 @@ class CredentialsProvider:
             await provider._creds_store.set(sub, collected)
             logger.info(
                 "%s credentials stored for sub='%s' fields=%s",
-                provider.name, sub, list(collected.keys()),
+                provider.name,
+                sub,
+                list(collected.keys()),
             )
 
             elicit_sent = False
@@ -340,17 +349,18 @@ class CredentialsProvider:
                     elicit_sent = True
                     logger.info(
                         "%s sent elicit_complete (submit) elicitation_id='%s'",
-                        provider.name, local["elicitation_id"],
+                        provider.name,
+                        local["elicitation_id"],
                     )
                 except Exception as exc:
                     logger.warning(
                         "%s send_elicit_complete failed for sub='%s': %s",
-                        provider.name, sub, exc,
+                        provider.name,
+                        sub,
+                        exc,
                     )
 
-            await provider._pending_store.set_result(
-                t, {"sub": sub, "_elicit_sent": elicit_sent}
-            )
+            await provider._pending_store.set_result(t, {"sub": sub, "_elicit_sent": elicit_sent})
 
             return HTMLResponse(
                 _jinja.get_template("credentials_success.html").render(
@@ -368,7 +378,7 @@ class CredentialsProvider:
         sub: str,
         elicitation_id: str,
         session: Any,
-        entry_token: Optional[str] = None,
+        entry_token: str | None = None,
     ) -> str:
         """Create a pending entry in the store, return the entry token."""
         token = entry_token or secrets.token_urlsafe(32)
@@ -380,13 +390,15 @@ class CredentialsProvider:
         self._sessions[token] = {"session": session, "elicitation_id": elicitation_id}
         logger.info(
             "%s credentials requested for sub='%s' elicitation_id='%s'",
-            self.name, sub, elicitation_id,
+            self.name,
+            sub,
+            elicitation_id,
         )
         return token
 
     async def _ensure_credentials_blocking(
         self, ctx: Context, sub: str, username: str
-    ) -> Optional[dict[str, str]]:
+    ) -> dict[str, str] | None:
         """
         Return cached credentials, or open the entry page via URL mode
         elicitation and wait for the user to submit the form.
@@ -395,13 +407,17 @@ class CredentialsProvider:
         if creds:
             logger.debug("%s _ensure_credentials_blocking sub=%r → cache hit", self.name, sub)
             return creds
-        logger.debug("%s _ensure_credentials_blocking sub=%r → cache miss, starting elicitation", self.name, sub)
+        logger.debug(
+            "%s _ensure_credentials_blocking sub=%r → cache miss, starting elicitation",
+            self.name,
+            sub,
+        )
 
         elicitation_id = secrets.token_urlsafe(16)
         entry_token = await self._new_pending_entry(sub, elicitation_id, ctx.session)
         entry_url = self._build_entry_url(entry_token)
 
-        signal: Optional[dict] = None
+        signal: dict | None = None
         try:
             result = await ctx.elicit_url(
                 message=(
@@ -423,14 +439,13 @@ class CredentialsProvider:
                 await self._pending_store.pop(entry_token)
                 logger.warning(
                     "%s timeout waiting for credential submission for sub='%s'",
-                    self.name, sub,
+                    self.name,
+                    sub,
                 )
                 return None
 
         except Exception as exc:
-            logger.info(
-                "%s elicit_url not supported (%s) — form fallback", self.name, exc
-            )
+            logger.info("%s elicit_url not supported (%s) — form fallback", self.name, exc)
             form_result = await ctx.elicit(
                 message=(
                     f"{self.name.capitalize()} credentials required for '{username}'.\n"
@@ -451,7 +466,8 @@ class CredentialsProvider:
                 await self._pending_store.pop(entry_token)
                 logger.warning(
                     "%s timeout waiting for credential submission for sub='%s'",
-                    self.name, sub,
+                    self.name,
+                    sub,
                 )
                 return None
 
@@ -461,18 +477,17 @@ class CredentialsProvider:
                 await ctx.session.send_elicit_complete(elicitation_id)
                 logger.info(
                     "%s sent elicit_complete (waiter) elicitation_id='%s'",
-                    self.name, elicitation_id,
+                    self.name,
+                    elicitation_id,
                 )
             except Exception as exc:
-                logger.warning(
-                    "%s send_elicit_complete (waiter) failed: %s", self.name, exc
-                )
+                logger.warning("%s send_elicit_complete (waiter) failed: %s", self.name, exc)
 
         return await self._creds_store.get(sub)
 
     async def _ensure_credentials_fail_fast(
         self, ctx: Context, sub: str, username: str
-    ) -> Optional[dict[str, str]]:
+    ) -> dict[str, str] | None:
         """
         Return cached credentials, or raise UrlElicitationRequiredError
         immediately.  Client must retry after the user fills in the form.
@@ -481,7 +496,9 @@ class CredentialsProvider:
         if creds:
             logger.debug("%s _ensure_credentials_fail_fast sub=%r → cache hit", self.name, sub)
             return creds
-        logger.debug("%s _ensure_credentials_fail_fast sub=%r → cache miss, raising", self.name, sub)
+        logger.debug(
+            "%s _ensure_credentials_fail_fast sub=%r → cache miss, raising", self.name, sub
+        )
 
         elicitation_id = secrets.token_urlsafe(16)
         entry_token = await self._new_pending_entry(sub, elicitation_id, ctx.session)

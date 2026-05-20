@@ -1,6 +1,7 @@
 """
 Tests for the store factory — backend selection and namespace wiring.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -20,6 +21,7 @@ def enc_key(monkeypatch) -> str:
 
 # ── Mode selection ────────────────────────────────────────────────────────────
 
+
 def test_default_mode_is_memory(monkeypatch):
     monkeypatch.delenv("TOKEN_STORAGE_MODE", raising=False)
     ts, ps = create_stores()
@@ -34,7 +36,7 @@ def test_explicit_memory_mode():
 
 
 def test_file_mode(enc_key, tmp_path):
-    ts, ps = create_stores(mode="file", file_path=str(tmp_path))
+    ts, _ = create_stores(mode="file", file_path=str(tmp_path))
     assert isinstance(ts, FileTokenStore)
 
 
@@ -46,6 +48,7 @@ def test_file_mode_env_var(monkeypatch, enc_key, tmp_path):
 
 
 # ── Encryption key validation ─────────────────────────────────────────────────
+
 
 def test_file_mode_raises_without_key(monkeypatch, tmp_path):
     monkeypatch.delenv("STORAGE_ENCRYPTION_KEY", raising=False)
@@ -62,6 +65,7 @@ def test_redis_mode_raises_without_key(monkeypatch):
 
 
 # ── Namespace wiring ──────────────────────────────────────────────────────────
+
 
 def test_file_namespace_creates_subdirectory(enc_key, tmp_path):
     ts, _ = create_stores(mode="file", file_path=str(tmp_path), namespace="github")

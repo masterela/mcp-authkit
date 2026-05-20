@@ -68,13 +68,14 @@ store
         token_store, pending_store = create_stores()   # reads TOKEN_STORAGE_MODE env var
         # pass token_store / pending_store into OAuthProvider / CredentialsProvider
 """
-from .providers import OAuthProvider, CredentialsProvider
-from .store import TokenStore, PendingStore, create_stores
+
+from .providers import CredentialsProvider, OAuthProvider
+from .store import PendingStore, TokenStore, create_stores
 
 __all__ = [
-    "OAuthProvider",
     "CredentialsProvider",
-    "TokenStore",
+    "OAuthProvider",
     "PendingStore",
+    "TokenStore",
     "create_stores",
 ]

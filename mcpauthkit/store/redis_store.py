@@ -17,13 +17,13 @@ Key layout (``{prefix}`` defaults to ``mcp:auth:``)::
 
 Poll interval for ``wait_for_result``: 0.5 s.
 """
+
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import logging
 import time
-from typing import Optional
 
 from .base import PendingStore, TokenStore
 from .encryption import decrypt, encrypt
@@ -48,7 +48,7 @@ class RedisTokenStore(TokenStore):
     def _key(self, sub: str) -> str:
         return f"{self._prefix}token:{hashlib.sha256(sub.encode()).hexdigest()}"
 
-    async def get(self, sub: str) -> Optional[dict]:
+    async def get(self, sub: str) -> dict | None:
         k = self._key(sub)
         logger.debug("RedisTokenStore.get sub=%r redis_key=%s", sub, k)
         raw = await self._r.get(k)
@@ -98,7 +98,7 @@ class RedisPendingStore(PendingStore):
         logger.debug("RedisPendingStore.create key=%.8s ttl=%s redis_key=%s", key, ttl, k)
         await self._r.set(k, encrypt(metadata), ex=ttl)
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         k = self._pending_key(key)
         logger.debug("RedisPendingStore.get key=%.8s redis_key=%s", key, k)
         raw = await self._r.get(k)
@@ -113,7 +113,7 @@ class RedisPendingStore(PendingStore):
             logger.warning("RedisPendingStore: decrypt failed on get key=%r: %s", key[:8], exc)
             return None
 
-    async def pop(self, key: str) -> Optional[dict]:
+    async def pop(self, key: str) -> dict | None:
         pk = self._pending_key(key)
         logger.debug("RedisPendingStore.pop key=%.8s redis_key=%s", key, pk)
         pipe = self._r.pipeline()
@@ -136,7 +136,7 @@ class RedisPendingStore(PendingStore):
         logger.debug("RedisPendingStore.set_result key=%.8s ttl=%s redis_key=%s", key, ttl, dk)
         await self._r.set(dk, encrypt(result), ex=ttl)
 
-    async def wait_for_result(self, key: str, timeout: float) -> Optional[dict]:
+    async def wait_for_result(self, key: str, timeout: float) -> dict | None:
         done_key = self._done_key(key)
         deadline = time.monotonic() + timeout
         logger.debug("RedisPendingStore.wait_for_result key=%.8s timeout=%s", key, timeout)

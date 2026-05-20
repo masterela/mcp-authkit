@@ -21,11 +21,12 @@ Usage
         ),
     )
 """
+
 from __future__ import annotations
 
 import logging
 from contextvars import ContextVar
-from typing import Optional
+from typing import cast
 
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -66,15 +67,15 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         app,
         *,
         issuer_url: str,
-        current_user: ContextVar[Optional[dict]],
+        current_user: ContextVar[dict | None],
         server_base_url: str,
         open_paths: tuple[str, ...] = (),
     ) -> None:
         super().__init__(app)
-        self._issuer_url   = issuer_url
+        self._issuer_url = issuer_url
         self._current_user = current_user
-        self._base         = server_base_url.rstrip("/")
-        self._open_paths   = open_paths
+        self._base = server_base_url.rstrip("/")
+        self._open_paths = open_paths
 
     async def dispatch(self, request: Request, call_next) -> Response:
         logger.debug(
@@ -86,14 +87,14 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         )
 
         if request.method == "OPTIONS" or self._is_open(request.url.path):
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             logger.debug("→ no/bad Bearer → 401")
             return self._unauthorized()
 
-        token = auth_header[len("Bearer "):]
+        token = auth_header[len("Bearer ") :]
         claims, fail_reason = await validate_jwt(token, self._issuer_url)
         if claims is None:
             logger.debug("→ JWT invalid (reason=%s) → 401", fail_reason)
@@ -106,19 +107,22 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         sub = claims.get("sub") or claims.get("preferred_username", "unknown")
         logger.info(
             "Authenticated: sub=%s preferred_username=%s",
-            sub, claims.get("preferred_username"),
+            sub,
+            claims.get("preferred_username"),
         )
-        self._current_user.set({
-            "sub":                sub,
-            "preferred_username": claims.get("preferred_username"),
-            "email":              claims.get("email"),
-            "name":               claims.get("name"),
-            "iss":                claims.get("iss"),
-            "exp":                claims.get("exp"),
-        })
-        return await call_next(request)
+        self._current_user.set(
+            {
+                "sub": sub,
+                "preferred_username": claims.get("preferred_username"),
+                "email": claims.get("email"),
+                "name": claims.get("name"),
+                "iss": claims.get("iss"),
+                "exp": claims.get("exp"),
+            }
+        )
+        return cast(Response, await call_next(request))
 
-    # ── Internal ───────────────────────────────────────────────────────────────
+    # ── Internal ─────────────────────────────────────────────────────────────────
 
     def _is_open(self, path: str) -> bool:
         return any(path.startswith(p) for p in self._open_paths)

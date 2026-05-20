@@ -1,6 +1,7 @@
 """
 Tests for mcpauthkit.store.encryption — Fernet key resolution and round-trip.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -9,8 +10,8 @@ from cryptography.fernet import Fernet, InvalidToken
 import mcpauthkit.store.encryption as enc_mod
 from mcpauthkit.store.encryption import decrypt, encrypt, get_fernet
 
-
 # ── Key resolution ────────────────────────────────────────────────────────────
+
 
 def test_key_from_env_var(monkeypatch, fernet_key):
     monkeypatch.setenv("STORAGE_ENCRYPTION_KEY", fernet_key)
@@ -44,6 +45,7 @@ def test_singleton_reused(monkeypatch, fernet_key):
 
 # ── Encrypt / decrypt ─────────────────────────────────────────────────────────
 
+
 def test_round_trip(monkeypatch, fernet_key):
     monkeypatch.setenv("STORAGE_ENCRYPTION_KEY", fernet_key)
     data = {"access_token": "tok-abc", "sub": "alice", "count": 42}
@@ -66,5 +68,5 @@ def test_wrong_key_raises(monkeypatch):
     key_b = Fernet.generate_key().decode()
     monkeypatch.setenv("STORAGE_ENCRYPTION_KEY", key_b)
 
-    with pytest.raises(Exception):  # InvalidToken or ValueError
+    with pytest.raises((InvalidToken, ValueError)):
         decrypt(blob)

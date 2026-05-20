@@ -6,10 +6,11 @@ The issuer URL's /.well-known/openid-configuration is fetched once and
 cached; the jwks_uri within it is used to verify token signatures.
 No provider-specific code — pure OIDC / RFC 7517.
 """
+
 import logging
 import time
 from enum import Enum
-from typing import Optional
+from typing import Any, cast
 
 import httpx
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -23,8 +24,9 @@ CACHE_TTL = 600.0  # 10 minutes
 
 class JwtFailReason(Enum):
     """Why JWT validation failed — used to emit the correct WWW-Authenticate error."""
-    EXPIRED = "expired"      # token present but past exp → client should use refresh_token
-    INVALID = "invalid"      # token present but malformed / wrong issuer / bad sig
+
+    EXPIRED = "expired"  # token present but past exp → client should use refresh_token
+    INVALID = "invalid"  # token present but malformed / wrong issuer / bad sig
 
 
 async def _get_oidc_config(issuer_url: str) -> dict:
@@ -39,7 +41,7 @@ async def _get_oidc_config(issuer_url: str) -> dict:
         resp.raise_for_status()
         data = resp.json()
     _oidc_cache[issuer_url] = (now, data)
-    return data
+    return cast(dict[str, Any], data)
 
 
 async def _get_jwks(jwks_uri: str) -> dict:
@@ -53,20 +55,24 @@ async def _get_jwks(jwks_uri: str) -> dict:
         resp.raise_for_status()
         data = resp.json()
     _jwks_cache[jwks_uri] = (now, data)
-    return data
+    return cast(dict[str, Any], data)
 
 
 _ALLOWED_ALGORITHMS = {
-    "RS256", "RS384", "RS512",
-    "PS256", "PS384", "PS512",
-    "ES256", "ES384", "ES512",
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
     "EdDSA",
 }
 
 
-async def validate_jwt(
-    token: str, issuer_url: str
-) -> tuple[Optional[dict], Optional["JwtFailReason"]]:
+async def validate_jwt(token: str, issuer_url: str) -> tuple[dict | None, JwtFailReason | None]:
     """
     Validate a signed JWT via the issuer's JWKS endpoint.
 
@@ -99,7 +105,8 @@ async def validate_jwt(
         if expected_issuer and claims.get("iss") != expected_issuer:
             logger.warning(
                 "JWT issuer mismatch: expected '%s', got '%s'",
-                expected_issuer, claims.get("iss"),
+                expected_issuer,
+                claims.get("iss"),
             )
             return None, JwtFailReason.INVALID
 

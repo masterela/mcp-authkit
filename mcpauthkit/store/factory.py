@@ -17,11 +17,11 @@ Example::
         pending_store=pending_store,
     )
 """
+
 from __future__ import annotations
 
 import logging
 import os
-from typing import Tuple
 
 from .base import PendingStore, TokenStore
 from .memory import MemoryPendingStore, MemoryTokenStore
@@ -58,7 +58,7 @@ def create_stores(
     redis_url: str | None = None,
     redis_prefix: str | None = None,
     namespace: str | None = None,
-) -> Tuple[TokenStore, PendingStore]:
+) -> tuple[TokenStore, PendingStore]:
     """
     Return a ``(TokenStore, PendingStore)`` pair for the requested mode.
 
@@ -116,6 +116,5 @@ def create_stores(
         return RedisTokenStore(client, prefix), RedisPendingStore(client, prefix)
 
     raise ValueError(
-        f"Unknown TOKEN_STORAGE_MODE {resolved_mode!r}. "
-        "Valid values: memory, file, redis"
+        f"Unknown TOKEN_STORAGE_MODE {resolved_mode!r}. Valid values: memory, file, redis"
     )

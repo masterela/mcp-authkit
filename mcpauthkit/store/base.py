@@ -1,10 +1,10 @@
 """
 Abstract base classes for the two store types used by auth providers.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class TokenStore(ABC):
@@ -17,7 +17,7 @@ class TokenStore(ABC):
     """
 
     @abstractmethod
-    async def get(self, sub: str) -> Optional[dict]:
+    async def get(self, sub: str) -> dict | None:
         """Return the stored dict for *sub*, or ``None`` if absent."""
 
     @abstractmethod
@@ -56,11 +56,11 @@ class PendingStore(ABC):
         """Create a new pending entry that expires in *ttl* seconds."""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         """Return the metadata for *key*, or ``None`` if absent / expired."""
 
     @abstractmethod
-    async def pop(self, key: str) -> Optional[dict]:
+    async def pop(self, key: str) -> dict | None:
         """Return and atomically delete the metadata for *key*."""
 
     @abstractmethod
@@ -75,7 +75,7 @@ class PendingStore(ABC):
         """
 
     @abstractmethod
-    async def wait_for_result(self, key: str, timeout: float) -> Optional[dict]:
+    async def wait_for_result(self, key: str, timeout: float) -> dict | None:
         """
         Block until a result is available for *key*, then return it.
 

@@ -27,12 +27,14 @@ For AWS KMS envelope encryption, generate a data key with:
 
 and set ``STORAGE_ENCRYPTION_KEY_PATH=/run/secrets/mcp_enc_key``.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 from pathlib import Path
+from typing import Any, cast
 
 from cryptography.fernet import Fernet
 
@@ -83,4 +85,4 @@ def encrypt(data: dict) -> bytes:
 def decrypt(ciphertext: bytes) -> dict:
     """Fernet-decrypt *ciphertext* and JSON-deserialise it."""
     logger.debug("decrypt: %d bytes ciphertext", len(ciphertext))
-    return json.loads(get_fernet().decrypt(ciphertext))
+    return cast(dict[str, Any], json.loads(get_fernet().decrypt(ciphertext)))

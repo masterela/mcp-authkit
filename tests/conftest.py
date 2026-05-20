@@ -1,6 +1,7 @@
 """
 Shared fixtures for the mcpauthkit test suite.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -20,4 +21,5 @@ def reset_fernet_singleton(monkeypatch):
     resolution is exercised fresh and tests cannot leak encryption state.
     """
     import mcpauthkit.store.encryption as enc_mod
+
     monkeypatch.setattr(enc_mod, "_fernet", None)

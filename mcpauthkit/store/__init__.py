@@ -22,14 +22,15 @@ Encryption key resolution (file and redis modes):
     AWS KMS, HashiCorp Vault, or another external KMS to enable key rotation
     without changing application code.
 """
+
 from .base import PendingStore, TokenStore
 from .factory import create_stores
 from .memory import MemoryPendingStore, MemoryTokenStore
 
 __all__ = [
-    "TokenStore",
-    "PendingStore",
-    "MemoryTokenStore",
     "MemoryPendingStore",
+    "MemoryTokenStore",
+    "PendingStore",
+    "TokenStore",
     "create_stores",
 ]

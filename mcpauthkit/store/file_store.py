@@ -20,6 +20,7 @@ Directory layout::
 Poll interval for ``wait_for_result``: 0.5 s — more than fast enough for
 human-interactive OAuth / credential flows.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,7 +28,6 @@ import hashlib
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 from .base import PendingStore, TokenStore
 from .encryption import decrypt, encrypt
@@ -59,7 +59,7 @@ class FileTokenStore(TokenStore):
     def _path(self, sub: str) -> Path:
         return self._dir / f"{_safe_name(sub)}.enc"
 
-    async def get(self, sub: str) -> Optional[dict]:
+    async def get(self, sub: str) -> dict | None:
         p = self._path(sub)
         logger.debug("FileTokenStore.get sub=%r file=%s", sub, p.name)
         if not p.exists():
@@ -112,7 +112,7 @@ class FilePendingStore(PendingStore):
         tmp.write_bytes(encrypt({**metadata, "_expires": time.time() + ttl}))
         tmp.replace(p)
 
-    async def get(self, key: str) -> Optional[dict]:
+    async def get(self, key: str) -> dict | None:
         p = self._meta_path(key)
         logger.debug("FilePendingStore.get key=%.8s", key)
         if not p.exists():
@@ -130,7 +130,7 @@ class FilePendingStore(PendingStore):
             logger.warning("FilePendingStore: decrypt failed on get key=%r: %s", key[:8], exc)
             return None
 
-    async def pop(self, key: str) -> Optional[dict]:
+    async def pop(self, key: str) -> dict | None:
         p = self._meta_path(key)
         if not p.exists():
             logger.debug("FilePendingStore.pop key=%.8s → miss", key)
@@ -152,7 +152,7 @@ class FilePendingStore(PendingStore):
         tmp.write_bytes(encrypt({**result, "_expires": time.time() + ttl}))
         tmp.replace(p)
 
-    async def wait_for_result(self, key: str, timeout: float) -> Optional[dict]:
+    async def wait_for_result(self, key: str, timeout: float) -> dict | None:
         done_path = self._done_path(key)
         deadline = time.monotonic() + timeout
         logger.debug("FilePendingStore.wait_for_result key=%.8s timeout=%s", key, timeout)

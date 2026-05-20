@@ -1,6 +1,7 @@
 """
 Tests for FileTokenStore and FilePendingStore.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -18,6 +19,7 @@ def set_encryption_key(monkeypatch):
 
 
 # ── FileTokenStore ────────────────────────────────────────────────────────────
+
 
 async def test_token_round_trip(tmp_path):
     store = FileTokenStore(str(tmp_path))
@@ -71,19 +73,20 @@ async def test_no_namespace_uses_tokens_dir(tmp_path):
 async def test_file_named_by_sha256(tmp_path):
     store = FileTokenStore(str(tmp_path))
     await store.set("alice", {"x": 1})
-    expected_name = hashlib.sha256("alice".encode()).hexdigest() + ".enc"
+    expected_name = hashlib.sha256(b"alice").hexdigest() + ".enc"
     assert (store._dir / expected_name).exists()
 
 
 async def test_corrupt_file_returns_none(tmp_path):
     store = FileTokenStore(str(tmp_path))
-    bad_name = hashlib.sha256("alice".encode()).hexdigest() + ".enc"
+    bad_name = hashlib.sha256(b"alice").hexdigest() + ".enc"
     store._dir.mkdir(parents=True, exist_ok=True)
     (store._dir / bad_name).write_bytes(b"not-valid-fernet-ciphertext")
     assert await store.get("alice") is None
 
 
 # ── FilePendingStore ──────────────────────────────────────────────────────────
+
 
 async def test_pending_round_trip(tmp_path):
     store = FilePendingStore(str(tmp_path))
@@ -120,9 +123,10 @@ async def test_pending_wait_for_result(tmp_path):
         await asyncio.sleep(0.1)
         await store.set_result("state-1", {"access_token": "tok"}, ttl=60)
 
-    asyncio.create_task(signal())
+    task = asyncio.create_task(signal())
     result = await store.wait_for_result("state-1", timeout=3.0)
     assert result == {"access_token": "tok"}
+    await task
 
 
 async def test_pending_wait_timeout(tmp_path):

@@ -1,4 +1,4 @@
-from .oauth_provider import OAuthProvider
 from .credentials_provider import CredentialsProvider
+from .oauth_provider import OAuthProvider
 
-__all__ = ["OAuthProvider", "CredentialsProvider"]
+__all__ = ["CredentialsProvider", "OAuthProvider"]

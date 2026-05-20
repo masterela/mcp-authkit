@@ -1,10 +1,10 @@
 """
 Tests for mcpauthkit.auth_middleware — JWT bearer validation and open paths.
 """
+
 from __future__ import annotations
 
 from contextvars import ContextVar
-from typing import Optional
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,7 +15,7 @@ from mcpauthkit.auth_middleware import JwtAuthMiddleware
 from mcpauthkit.jwt_validator import JwtFailReason
 
 # Shared ContextVar for all tests in this module
-current_user: ContextVar[Optional[dict]] = ContextVar("current_user", default=None)
+current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
 
 MOCK_CLAIMS = {
     "sub": "user-123",
@@ -78,12 +78,14 @@ def expired_client(monkeypatch) -> TestClient:
 
 # ── Open paths ────────────────────────────────────────────────────────────────
 
+
 def test_open_path_requires_no_auth(invalid_client):
     resp = invalid_client.get("/health")
     assert resp.status_code == 200
 
 
 # ── Missing / malformed Bearer ────────────────────────────────────────────────
+
 
 def test_no_authorization_header_returns_401(invalid_client):
     resp = invalid_client.get("/protected")
@@ -103,12 +105,14 @@ def test_401_includes_www_authenticate_header(invalid_client):
 
 # ── Invalid token ─────────────────────────────────────────────────────────────
 
+
 def test_invalid_token_returns_401(invalid_client):
     resp = invalid_client.get("/protected", headers={"Authorization": "Bearer bad-token"})
     assert resp.status_code == 401
 
 
 # ── Expired token ─────────────────────────────────────────────────────────────
+
 
 def test_expired_token_returns_401(expired_client):
     resp = expired_client.get("/protected", headers={"Authorization": "Bearer expired-token"})
@@ -123,6 +127,7 @@ def test_expired_token_www_authenticate_contains_invalid_token(expired_client):
 
 # ── Valid token ───────────────────────────────────────────────────────────────
 
+
 def test_valid_token_returns_200(valid_client):
     resp = valid_client.get("/protected", headers={"Authorization": "Bearer valid-token"})
     assert resp.status_code == 200
@@ -134,6 +139,7 @@ def test_valid_token_populates_current_user(valid_client):
 
 
 # ── OPTIONS passthrough ───────────────────────────────────────────────────────
+
 
 def test_options_bypasses_auth(invalid_client):
     resp = invalid_client.options("/protected")
