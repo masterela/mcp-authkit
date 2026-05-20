@@ -5,16 +5,25 @@ on:
     branches: ["main"]
 
 permissions:
-  contents: write   # push to gh-pages branch
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Build & deploy MkDocs
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history so git-revision-date works
+          fetch-depth: 0
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -24,5 +33,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Build MkDocs site
+        run: uv run mkdocs build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
       - name: Deploy to GitHub Pages
-        run: uv run mkdocs gh-deploy --force
+        id: deployment
+        uses: actions/deploy-pages@v4
