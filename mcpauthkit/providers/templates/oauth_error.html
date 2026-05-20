@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ provider_name }} — Authorization Failed{% endblock %}
+
+{% block content %}
+<div class="status-icon error">✗</div>
+<h1>Authorization failed</h1>
+<p class="subtitle">{{ error }}{% if error_description %}: {{ error_description }}{% endif %}</p>
+<p style="color:#6b7a99;font-size:0.9rem;">You can close this tab.</p>
+{% endblock %}

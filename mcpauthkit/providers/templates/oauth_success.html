@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ provider_name }} — Authorization Successful{% endblock %}
+
+{% block content %}
+<div class="status-icon success">✓</div>
+<h1>{{ provider_name }} authorization successful</h1>
+<p class="subtitle">
+  You can close this tab and return to VS Code&nbsp;/&nbsp;Inspector.
+</p>
+<small class="meta">Authenticated as: {{ sub }}</small>
+{% endblock %}
