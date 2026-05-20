@@ -64,7 +64,8 @@ class RedisTokenStore(TokenStore):
                 "RedisTokenStore: could not decrypt entry for sub=%r (%s). "
                 "This usually means the encryption key changed. "
                 "The stale entry will be removed — the user will be re-prompted once.",
-                sub[:8], exc,
+                sub[:8],
+                exc,
             )
             await self._r.delete(k)
             return None

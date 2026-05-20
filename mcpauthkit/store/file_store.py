@@ -74,7 +74,8 @@ class FileTokenStore(TokenStore):
                 "FileTokenStore: could not decrypt entry for sub=%r (%s). "
                 "This usually means the encryption key changed. "
                 "The stale entry will be removed — the user will be re-prompted once.",
-                sub[:8], exc,
+                sub[:8],
+                exc,
             )
             p.unlink(missing_ok=True)
             return None
