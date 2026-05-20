@@ -26,10 +26,10 @@ pip install "mcp-authkit[redis]"
 
 ---
 
-## Repository layout
+## Package layout
 
 ```
-mcpauthkit/                     # ← installable package
+mcpauthkit/
 ├── __init__.py                 # Public exports: OAuthProvider, CredentialsProvider, …
 ├── auth_middleware.py          # JwtAuthMiddleware (BaseHTTPMiddleware)
 ├── auth_routes.py              # oauth_meta_router() — well-known + DCR façade
@@ -45,14 +45,9 @@ mcpauthkit/                     # ← installable package
     ├── redis_store.py          # Async Redis store (requires redis extra)
     ├── encryption.py           # Fernet key derivation helpers
     └── factory.py              # create_stores() — env-driven backend selection
-
-server.py                       # Example FastMCP server (GitHub + Confluence tools)
-config.py                       # Pydantic settings (loaded from .env)
-docker-compose.yml              # Keycloak dev instance
-keycloak-realm.json             # Pre-configured realm
-docs/
-└── confluence_token_how.md     # Markdown guide rendered in the credentials form
 ```
+
+The repository also contains `server.py` (a complete example server using GitHub OAuth and Confluence credentials) and a `docker-compose.yml` / `keycloak-realm.json` for running a local Keycloak instance. See the [quickstart repo](https://github.com/masterela/mcp-authkit-quickstart) for a guided walkthrough.
 
 ---
 
@@ -64,19 +59,23 @@ Every request to the MCP server must carry a valid `Authorization: Bearer <token
 from mcpauthkit.auth_middleware import JwtAuthMiddleware
 from mcpauthkit.auth_routes import oauth_meta_router
 
+ISSUER_URL    = "https://sso.example.com/realms/my-realm"
+SERVER_URL    = "https://my-mcp-server.example.com"
+CLIENT_ID     = "my-mcp-public-client"   # pre-registered public client
+
 # Publish RFC 8414 / MCP-spec well-known endpoints + DCR façade
 app.include_router(oauth_meta_router(
-    server_base_url="http://localhost:8005",
-    issuer_url="http://localhost:8889/realms/mcp-poc5",
-    client_id="mcp-poc5-vscode",          # pre-registered public client
+    server_base_url=SERVER_URL,
+    issuer_url=ISSUER_URL,
+    client_id=CLIENT_ID,
 ))
 
 # Validate JWT on every request; populate current_user ContextVar
 app.add_middleware(
     JwtAuthMiddleware,
-    issuer_url="http://localhost:8889/realms/mcp-poc5",
+    issuer_url=ISSUER_URL,
     current_user=current_user,
-    server_base_url="http://localhost:8005",
+    server_base_url=SERVER_URL,
     open_paths=(
         "/.well-known", "/health", "/register",
         github_oauth.callback_path,
@@ -130,10 +129,10 @@ github_oauth = OAuthProvider.from_standard_oauth2(
     name="github",
     authorization_url="https://github.com/login/oauth/authorize",
     token_url="https://github.com/login/oauth/access_token",
-    client_id=settings.github_client_id,
-    client_secret=settings.github_client_secret,
+    client_id=os.environ["GITHUB_CLIENT_ID"],
+    client_secret=os.environ["GITHUB_CLIENT_SECRET"],
     scope="read:user repo",
-    redirect_uri="http://localhost:8005/github/callback",
+    redirect_uri=f"{SERVER_URL}/github/callback",
     user_context=current_user,
 )
 github_oauth.register(app)   # registers GET /github/callback on the FastAPI app
@@ -173,7 +172,7 @@ confluence_creds = CredentialsProvider(
         },
     },
     user_context=current_user,
-    server_base_url="http://localhost:8005",
+    server_base_url=SERVER_URL,
     doc="docs/confluence_token_how.md",   # optional — rendered above the form
 )
 confluence_creds.register(app)
@@ -212,7 +211,7 @@ The MCP client connects to `http://<host>:<port>/mcp`.
 
 ## HTML templates
 
-All browser-facing pages use Jinja2 templates in `lib/providers/templates/`. Every page extends `base.html` which provides:
+All browser-facing pages use Jinja2 templates in `mcpauthkit/providers/templates/`. Every page extends `base.html` which provides:
 
 - A blue "MCP Authentication 🔒" top bar
 - A centered card layout
@@ -220,28 +219,11 @@ All browser-facing pages use Jinja2 templates in `lib/providers/templates/`. Eve
 
 ---
 
-## Quick start
+## Getting started
 
-> A full working example with Docker Compose (Redis + Keycloak) and a GitHub OAuth tool lives in the companion repo **[mcp-authkit-quickstart](https://github.com/masterela/mcp-authkit-quickstart)**.
+A full working example (Docker Compose with Redis + Keycloak, a GitHub OAuth tool, and a Confluence credentials tool) lives in the companion repo:
 
-```bash
-# 1. Start Keycloak (Docker required)
-docker compose up -d
-# Import keycloak-realm.json via the Keycloak admin console:
-#   http://localhost:8889  →  admin / admin  →  Import realm
-
-# 2. Copy and fill environment
-cp .env.example .env
-
-# 3. Install dependencies
-uv sync   # or: pip install -e ".[experimental]"
-
-# 4. Run the example server
-uv run uvicorn server:app --reload --port 8005
-```
-
-Test users pre-seeded in the dev realm: `alice / alice123`, `bob / bob123`.  
-Connect VS Code GitHub Copilot to `http://localhost:8005/mcp`.
+**[mcp-authkit-quickstart](https://github.com/masterela/mcp-authkit-quickstart)**
 
 ---
 
