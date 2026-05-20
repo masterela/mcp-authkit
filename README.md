@@ -1,6 +1,12 @@
-# MCP Auth Library
+# mcp-authkit
 
-A reusable authentication library for [FastMCP](https://github.com/modelcontextprotocol/python-sdk) servers built on FastAPI / Starlette. Extracted from PoC 5 of an internal MCP authentication research project.
+[![CI](https://github.com/masterela/mcp-authkit/actions/workflows/ci.yml/badge.svg)](https://github.com/masterela/mcp-authkit/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/masterela/mcp-authkit/branch/main/graph/badge.svg)](https://codecov.io/gh/masterela/mcp-authkit)
+[![PyPI version](https://img.shields.io/pypi/v/mcp-authkit)](https://pypi.org/project/mcp-authkit/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-authkit)](https://pypi.org/project/mcp-authkit/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Pluggable authentication library for [FastMCP](https://github.com/modelcontextprotocol/python-sdk) servers built on FastAPI / Starlette.
 
 Supports two independent auth legs:
 
@@ -9,32 +15,43 @@ Supports two independent auth legs:
 
 ---
 
+## Installation
+
+```bash
+pip install mcp-authkit
+
+# Optional Redis storage backend
+pip install "mcp-authkit[redis]"
+```
+
+---
+
 ## Repository layout
 
 ```
-auth-lib/
-├── server.py                   # Example FastMCP server (GitHub + Confluence tools)
-├── config.py                   # Pydantic settings (loaded from .env)
-├── .env.example                # Template for required environment variables
-├── docker-compose.yml          # Keycloak dev instance
-├── keycloak-realm.json         # Pre-configured realm (import into Keycloak)
-├── docs/
-│   └── confluence_token_how.md # Markdown guide rendered in the credentials form
-└── lib/                        # ← the reusable library
-    ├── __init__.py             # Exports OAuthProvider, CredentialsProvider
-    ├── auth_middleware.py      # JwtAuthMiddleware (BaseHTTPMiddleware)
-    ├── auth_routes.py          # oauth_meta_router() — well-known + DCR façade
-    ├── jwt_validator.py        # OIDC JWKS-based JWT validation (provider-agnostic)
-    └── providers/
-        ├── oauth_provider.py       # OAuthProvider — third-party OAuth 2.0 leg
-        ├── credentials_provider.py # CredentialsProvider — PAT / API-key form
-        └── templates/              # Jinja2 HTML templates (Tailwind-free, CDN-free)
-            ├── base.html
-            ├── oauth_success.html
-            ├── oauth_error.html
-            ├── credentials_entry.html
-            ├── credentials_success.html
-            └── credentials_error.html
+mcpauthkit/                     # ← installable package
+├── __init__.py                 # Public exports: OAuthProvider, CredentialsProvider, …
+├── auth_middleware.py          # JwtAuthMiddleware (BaseHTTPMiddleware)
+├── auth_routes.py              # oauth_meta_router() — well-known + DCR façade
+├── jwt_validator.py            # OIDC JWKS-based JWT validation (provider-agnostic)
+├── providers/
+│   ├── oauth_provider.py       # OAuthProvider — third-party OAuth 2.0 leg
+│   ├── credentials_provider.py # CredentialsProvider — PAT / API-key form
+│   └── templates/              # Jinja2 HTML templates (no external CDN)
+└── store/
+    ├── base.py                 # Abstract store interfaces
+    ├── memory.py               # In-process store (dev / testing)
+    ├── file_store.py           # Fernet-encrypted file store
+    ├── redis_store.py          # Async Redis store (requires redis extra)
+    ├── encryption.py           # Fernet key derivation helpers
+    └── factory.py              # create_stores() — env-driven backend selection
+
+server.py                       # Example FastMCP server (GitHub + Confluence tools)
+config.py                       # Pydantic settings (loaded from .env)
+docker-compose.yml              # Keycloak dev instance
+keycloak-realm.json             # Pre-configured realm
+docs/
+└── confluence_token_how.md     # Markdown guide rendered in the credentials form
 ```
 
 ---
@@ -205,24 +222,38 @@ All browser-facing pages use Jinja2 templates in `lib/providers/templates/`. Eve
 
 ## Quick start
 
+> A full working example with Docker Compose (Redis + Keycloak) and a GitHub OAuth tool lives in the companion repo **[mcp-authkit-quickstart](https://github.com/masterela/mcp-authkit-quickstart)**.
+
 ```bash
 # 1. Start Keycloak (Docker required)
 docker compose up -d
-# Import keycloak-realm.json via the Keycloak admin console or:
-# http://localhost:8889  admin / admin  → import realm
+# Import keycloak-realm.json via the Keycloak admin console:
+#   http://localhost:8889  →  admin / admin  →  Import realm
 
 # 2. Copy and fill environment
 cp .env.example .env
 
 # 3. Install dependencies
-uv sync   # or: pip install -e .
+uv sync   # or: pip install -e ".[experimental]"
 
-# 4. Run
+# 4. Run the example server
 uv run uvicorn server:app --reload --port 8005
 ```
 
-Test users: `alice / alice123`, `bob / bob123`.  
+Test users pre-seeded in the dev realm: `alice / alice123`, `bob / bob123`.  
 Connect VS Code GitHub Copilot to `http://localhost:8005/mcp`.
+
+---
+
+## Storage backends
+
+| Mode | Class | Notes |
+|---|---|---|
+| `memory` (default) | `MemoryTokenStore` / `MemoryPendingStore` | In-process. Tokens lost on restart. Suitable for development. |
+| `file` | `FileTokenStore` / `FilePendingStore` | Fernet-encrypted JSON files. Good for single-instance deployments. |
+| `redis` | `RedisTokenStore` / `RedisPendingStore` | Async Redis. Requires `pip install "mcp-authkit[redis]"`. Use for multi-replica deployments. |
+
+Select a backend via the `TOKEN_STORAGE_MODE` environment variable (`memory` / `file` / `redis`), or call `create_stores()` directly.
 
 ---
 
@@ -231,10 +262,27 @@ Connect VS Code GitHub Copilot to `http://localhost:8005/mcp`.
 | Package | Purpose |
 |---|---|
 | `fastapi` | HTTP framework |
-| `fastmcp` / `mcp>=1.6` | MCP server SDK |
+| `mcp>=1.6` | MCP server SDK (FastMCP) |
 | `starlette` | ASGI primitives, `BaseHTTPMiddleware` |
-| `pydantic-settings` | Typed configuration from `.env` |
-| `python-jose` | JWT decoding and JWKS validation |
+| `python-jose[cryptography]` | JWT decoding and JWKS validation |
 | `httpx` | Async HTTP client (token exchange, OIDC discovery) |
 | `jinja2` | HTML template rendering |
-| `uvicorn` | ASGI server |
+| `cryptography` | Fernet encryption for file and Redis stores |
+
+---
+
+## Contributing
+
+```bash
+# Install dev dependencies
+uv sync --group dev
+
+# Lint + type-check
+uv run ruff check mcpauthkit/ tests/
+uv run mypy mcpauthkit/
+
+# Tests with coverage
+uv run pytest --cov=mcpauthkit --cov-report=term-missing -q
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.

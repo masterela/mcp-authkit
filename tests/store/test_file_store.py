@@ -135,3 +135,35 @@ async def test_pending_wait_timeout(tmp_path):
     # poll interval is 0.5s, timeout < that → times out immediately
     result = await store.wait_for_result("state-1", timeout=0.1)
     assert result is None
+
+
+async def test_pending_pop_miss(tmp_path):
+    store = FilePendingStore(str(tmp_path))
+    assert await store.pop("nonexistent") is None
+
+
+async def test_pending_corrupt_file_on_get(tmp_path):
+    """Corrupt .enc file → get() returns None without raising."""
+    store = FilePendingStore(str(tmp_path))
+    bad_path = store._meta_path("state-1")
+    bad_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_path.write_bytes(b"not-valid-fernet-ciphertext")
+    assert await store.get("state-1") is None
+
+
+async def test_pending_corrupt_file_on_pop(tmp_path):
+    """Corrupt .enc file → pop() returns None without raising."""
+    store = FilePendingStore(str(tmp_path))
+    bad_path = store._meta_path("state-1")
+    bad_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_path.write_bytes(b"not-valid-fernet-ciphertext")
+    assert await store.pop("state-1") is None
+
+
+async def test_pending_corrupt_done_on_wait_for_result(tmp_path):
+    """Corrupt .done.enc file → wait_for_result() returns None without raising."""
+    store = FilePendingStore(str(tmp_path))
+    await store.create("state-1", {"sub": "alice"}, ttl=60)
+    store._done_path("state-1").write_bytes(b"not-valid-fernet-ciphertext")
+    result = await store.wait_for_result("state-1", timeout=1.0)
+    assert result is None

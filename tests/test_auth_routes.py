@@ -85,6 +85,32 @@ def test_authorization_server_pkce_supported(client):
     assert "S256" in data["code_challenge_methods_supported"]
 
 
+def test_authorization_server_uses_oidc_config(client):
+    """When OIDC discovery returns 200, its endpoints override the defaults."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    oidc_doc = {
+        "authorization_endpoint": "http://kc.test/auth",
+        "token_endpoint": "http://kc.test/token",
+        "jwks_uri": "http://kc.test/certs",
+    }
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = oidc_doc
+
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("mcpauthkit.auth_routes.httpx.AsyncClient", return_value=mock_client):
+        data = client.get("/.well-known/oauth-authorization-server").json()
+
+    assert data["authorization_endpoint"] == "http://kc.test/auth"
+    assert data["token_endpoint"] == "http://kc.test/token"
+    assert data["jwks_uri"] == "http://kc.test/certs"
+
+
 # ── DCR façade ────────────────────────────────────────────────────────────────
 
 

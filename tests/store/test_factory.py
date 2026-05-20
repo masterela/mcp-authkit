@@ -77,3 +77,36 @@ def test_no_namespace_uses_tokens_root(enc_key, tmp_path):
     ts, _ = create_stores(mode="file", file_path=str(tmp_path))
     assert isinstance(ts, FileTokenStore)
     assert "github" not in str(ts._dir)
+
+
+# ── Redis mode ────────────────────────────────────────────────────────────────
+
+
+def test_redis_mode_returns_redis_stores(enc_key):
+    from unittest.mock import patch
+
+    import fakeredis
+
+    from mcpauthkit.store.redis_store import RedisPendingStore, RedisTokenStore
+
+    fake_redis = fakeredis.FakeAsyncRedis()
+    with patch("redis.asyncio.from_url", return_value=fake_redis):
+        ts, ps = create_stores(mode="redis", redis_url="redis://localhost/0")
+
+    assert isinstance(ts, RedisTokenStore)
+    assert isinstance(ps, RedisPendingStore)
+
+
+def test_redis_namespace_applied_to_prefix(enc_key):
+    from unittest.mock import patch
+
+    import fakeredis
+
+    from mcpauthkit.store.redis_store import RedisTokenStore
+
+    fake_redis = fakeredis.FakeAsyncRedis()
+    with patch("redis.asyncio.from_url", return_value=fake_redis):
+        ts, _ = create_stores(mode="redis", redis_url="redis://localhost/0", namespace="github")
+
+    assert isinstance(ts, RedisTokenStore)
+    assert "github" in ts._prefix
