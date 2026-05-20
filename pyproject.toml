@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp-authkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "Pluggable OAuth 2.0 + credentials elicitation library for FastMCP servers"
 readme = "README.md"
 requires-python = ">=3.11"
