@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/credentials/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/jwt/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/middleware/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/oauth/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/routes/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+    <url>
+         <loc>https://masterela.github.io/mcp-authkit/api/store/</loc>
+         <lastmod>2026-05-20</lastmod>
+    </url>
+</urlset>
