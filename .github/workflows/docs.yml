@@ -1,0 +1,28 @@
+name: Docs
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write   # push to gh-pages branch
+
+jobs:
+  deploy:
+    name: Build & deploy MkDocs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so git-revision-date works
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Deploy to GitHub Pages
+        run: uv run mkdocs gh-deploy --force

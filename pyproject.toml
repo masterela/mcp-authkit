@@ -16,6 +16,12 @@ dependencies = [
     "redis>=5; extra == 'redis'",  # optional — only needed for TOKEN_STORAGE_MODE=redis
 ]
 
+[project.urls]
+Homepage = "https://github.com/masterela/mcp-authkit"
+Documentation = "https://masterela.github.io/mcp-authkit/"
+Repository = "https://github.com/masterela/mcp-authkit"
+Changelog = "https://github.com/masterela/mcp-authkit/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 redis = ["redis>=5"]
 

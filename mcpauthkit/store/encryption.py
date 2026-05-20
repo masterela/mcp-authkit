@@ -79,7 +79,7 @@ def get_fernet() -> Fernet:
 def encrypt(data: dict) -> bytes:
     """JSON-serialise *data* and Fernet-encrypt it."""
     logger.debug("encrypt: %d keys", len(data))
-    return get_fernet().encrypt(json.dumps(data).encode())
+    return cast(bytes, get_fernet().encrypt(json.dumps(data).encode()))
 
 
 def decrypt(ciphertext: bytes) -> dict:
