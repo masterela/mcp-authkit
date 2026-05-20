@@ -29,17 +29,24 @@ pip install "mcp-authkit[redis]"
 
 ## Quick start
 
-### Leg 1 — OIDC JWT middleware
+### Step 1 — Declare `current_user`
 
-`current_user` is a standard Python [`ContextVar`](https://docs.python.org/3/library/contextvars.html) you declare once at module level. The middleware writes the validated JWT claims into it on every request; the Leg 2 providers read the `sub` claim from it to key cached tokens per user.
+The library is wired together through a single [`ContextVar`](https://docs.python.org/3/library/contextvars.html) that **you** create and own. Declare it once at module level in your server file and pass it to everything:
 
 ```python
 from contextvars import ContextVar
+
+# You create this. The middleware writes it; providers read it.
+current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
+```
+
+Python scopes `ContextVar` per async task automatically, so concurrent requests never interfere.
+
+### Step 2 — Add the JWT middleware (Leg 1)
+
+```python
 from mcpauthkit.auth_middleware import JwtAuthMiddleware
 from mcpauthkit.auth_routes import oauth_meta_router
-
-# Declare once at module level — shared by middleware + all providers
-current_user: ContextVar[dict | None] = ContextVar("current_user", default=None)
 
 app.include_router(oauth_meta_router(
     server_base_url=SERVER_URL,
@@ -56,7 +63,7 @@ app.add_middleware(
 )
 ```
 
-### Leg 2a — third-party OAuth token
+### Step 3 — Gate a tool behind a third-party OAuth token (Leg 2a)
 
 ```python
 from mcpauthkit import OAuthProvider
@@ -80,7 +87,7 @@ async def list_prs(ctx: Context, repo: str) -> str:
     ...
 ```
 
-### Leg 2b — PAT / API key form
+### Step 4 — Gate a tool behind a PAT / API key form (Leg 2b)
 
 ```python
 from mcpauthkit import CredentialsProvider
