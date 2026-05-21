@@ -8,6 +8,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-20
+
+### Fixed
+- **`auth_routes`** — `/.well-known/oauth-protected-resource` now lists the OIDC
+  issuer URL in `authorization_servers` instead of the MCP server's own base URL.
+  The previous behaviour caused browser-based clients (e.g. MCP Inspector) to
+  treat the MCP server as the authorization server, producing a cross-origin
+  `issuer` / `token_endpoint` mismatch and broken OAuth flows.  Clients now
+  discover and interact with the OIDC provider (Keycloak, Okta, …) directly and
+  send the resulting Bearer token to the MCP server for JWT validation.
+
 ## [0.1.3] — 2026-05-20
 
 ### Added
