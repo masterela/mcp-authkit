@@ -13,8 +13,8 @@ Usage
 
     app.include_router(oauth_meta_router(
         server_base_url="http://localhost:8005",
-        issuer_url="http://localhost:8889/realms/mcp-poc5",
-        client_id="mcp-poc5-vscode",
+        issuer_url="http://localhost:8889/realms/mcp-quickstart",
+        client_id="mcp-quickstart-vscode",
     ))
 
 Call ``include_router`` before ``app.mount("/", ...)``.
@@ -63,7 +63,7 @@ def oauth_meta_router(
         return JSONResponse(
             {
                 "resource": f"{base}/mcp",
-                "authorization_servers": [base],
+                "authorization_servers": [issuer],
                 "bearer_methods_supported": ["header"],
                 "scopes_supported": ["openid", "profile", "email"],
             }

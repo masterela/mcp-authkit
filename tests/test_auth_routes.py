@@ -39,7 +39,10 @@ def test_protected_resource_returns_200(client):
 def test_protected_resource_content(client):
     data = client.get("/.well-known/oauth-protected-resource").json()
     assert data["resource"] == f"{SERVER}/mcp"
-    assert SERVER in data["authorization_servers"]
+    # authorization_servers must point to the OIDC issuer, not the MCP server,
+    # so that clients (e.g. MCP Inspector) discover auth endpoints from Keycloak
+    # directly rather than treating the MCP server as the authorization server.
+    assert ISSUER in data["authorization_servers"]
     assert "header" in data["bearer_methods_supported"]
 
 
