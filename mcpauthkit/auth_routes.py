@@ -63,7 +63,7 @@ def oauth_meta_router(
         return JSONResponse(
             {
                 "resource": f"{base}/mcp",
-                "authorization_servers": [issuer],
+                "authorization_servers": [base],
                 "bearer_methods_supported": ["header"],
                 "scopes_supported": ["openid", "profile", "email"],
             }
