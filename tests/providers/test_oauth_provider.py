@@ -526,6 +526,74 @@ def test_from_standard_oauth2_creates_provider():
     assert p.callback_path == "/callback"
 
 
+def test_from_standard_oauth2_no_extra_params_default():
+    """Default (extra_authorize_params=None) produces only standard params."""
+    uc: ContextVar = ContextVar("test_uc_no_extra", default=None)
+    ts, ps = MemoryTokenStore(), MemoryPendingStore()
+    p = OAuthProvider.from_standard_oauth2(
+        name="myapp",
+        authorization_url="https://example.com/authorize",
+        token_url="https://example.com/token",
+        client_id="cid",
+        client_secret="csec",
+        scope="read",
+        redirect_uri="http://localhost/callback",
+        user_context=uc,
+        token_store=ts,
+        pending_store=ps,
+    )
+    url = p._build_auth_url("s1", "http://localhost/callback")
+    assert "client_id=cid" in url
+    assert "response_type=code" in url
+    assert "idp=" not in url
+
+
+def test_from_standard_oauth2_extra_authorize_params_appended():
+    """extra_authorize_params are included in the authorization URL."""
+    uc: ContextVar = ContextVar("test_uc_extra", default=None)
+    ts, ps = MemoryTokenStore(), MemoryPendingStore()
+    p = OAuthProvider.from_standard_oauth2(
+        name="okta",
+        authorization_url="https://org.okta.com/oauth2/default/v1/authorize",
+        token_url="https://org.okta.com/oauth2/default/v1/token",
+        client_id="cid",
+        client_secret="csec",
+        scope="openid profile",
+        redirect_uri="http://localhost/callback",
+        user_context=uc,
+        token_store=ts,
+        pending_store=ps,
+        extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+    )
+    url = p._build_auth_url("mystate", "http://localhost/callback")
+    assert "idp=0oaz2r21a8RBmZyOL0h7" in url
+    assert "client_id=cid" in url
+    assert "state=mystate" in url
+
+
+def test_from_standard_oauth2_extra_params_cannot_override_standard():
+    """Standard params (client_id, state, etc.) always win over extra_authorize_params."""
+    uc: ContextVar = ContextVar("test_uc_override", default=None)
+    ts, ps = MemoryTokenStore(), MemoryPendingStore()
+    p = OAuthProvider.from_standard_oauth2(
+        name="myapp",
+        authorization_url="https://example.com/authorize",
+        token_url="https://example.com/token",
+        client_id="real-client-id",
+        client_secret="csec",
+        scope="read",
+        redirect_uri="http://localhost/callback",
+        user_context=uc,
+        token_store=ts,
+        pending_store=ps,
+        extra_authorize_params={"client_id": "injected-id", "idp": "hint"},
+    )
+    url = p._build_auth_url("s", "http://localhost/callback")
+    assert "client_id=real-client-id" in url
+    assert "client_id=injected-id" not in url
+    assert "idp=hint" in url
+
+
 async def test_from_standard_oauth2_exchange_code():
     uc: ContextVar = ContextVar("test_uc2", default=None)
     ts, ps = MemoryTokenStore(), MemoryPendingStore()

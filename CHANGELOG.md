@@ -8,6 +8,23 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-06-22
+
+### Added
+- **`OAuthProvider.from_standard_oauth2`** — new `extra_authorize_params` keyword
+  argument (`dict[str, str] | None`, default `None`).  Extra parameters are merged
+  into every authorization URL before the standard ones, so standard params
+  (`client_id`, `redirect_uri`, `scope`, `state`, `response_type`) always take
+  precedence and cannot be overridden.  Useful for provider-specific routing hints
+  that are outside the OAuth 2.0 spec — for example Okta's `idp` parameter, which
+  bypasses the Okta login page and routes users directly to a configured external
+  Identity Provider::
+
+      okta = OAuthProvider.from_standard_oauth2(
+          ...
+          extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+      )
+
 ## [0.2.1] — 2026-05-20
 
 ### Fixed
