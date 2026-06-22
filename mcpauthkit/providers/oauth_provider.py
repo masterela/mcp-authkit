@@ -208,10 +208,11 @@ class OAuthProvider:
         refresh_token_fn: Callable[..., Coroutine[Any, Any, ExchangeResult]] | None = None,
         token_timeout: float = 120.0,
         http_verify: bool | ssl.SSLContext | str = True,
+        extra_authorize_params: dict[str, str] | None = None,
     ) -> OAuthProvider:
         """
         Convenience factory for any standard OAuth2 Authorization Code provider
-        (GitHub, Google, Jira, Entra, etc.).
+        (GitHub, Google, Jira, Entra, Okta, etc.).
 
         Builds ``build_auth_url`` and ``exchange_code`` internally from standard
         OAuth2 endpoints so the caller only needs to supply configuration::
@@ -242,6 +243,25 @@ class OAuthProvider:
             Space-separated scope string.
         http_verify
             Passed as ``verify=`` to httpx for the token exchange request.
+        extra_authorize_params
+            Optional extra query parameters appended to every authorization URL.
+            Use this for provider-specific routing hints that are not part of the
+            standard OAuth2 spec.  For example, Okta supports an ``idp`` parameter
+            to bypass its login page and route users directly to a configured
+            external Identity Provider::
+
+                okta = OAuthProvider.from_standard_oauth2(
+                    name="okta",
+                    authorization_url="https://your-org.okta.com/oauth2/default/v1/authorize",
+                    token_url="https://your-org.okta.com/oauth2/default/v1/token",
+                    ...
+                    extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+                )
+
+            These parameters are merged into the standard ones
+            (``client_id``, ``redirect_uri``, ``scope``, ``state``,
+            ``response_type``).  Standard parameters always take precedence so
+            they cannot be overridden here.  Default: ``None`` (no extra params).
         token_store
             Optional persistent store override.
         pending_store
@@ -251,19 +271,20 @@ class OAuthProvider:
         """
 
         def _build_auth_url(state: str, redir: str) -> str:
-            return (
-                authorization_url
-                + "?"
-                + urlencode(
-                    {
-                        "client_id": client_id,
-                        "redirect_uri": redir,
-                        "scope": scope,
-                        "state": state,
-                        "response_type": "code",
-                    }
-                )
+            params: dict[str, str] = {}
+            if extra_authorize_params:
+                params.update(extra_authorize_params)
+            # Standard params always win over any extra ones
+            params.update(
+                {
+                    "client_id": client_id,
+                    "redirect_uri": redir,
+                    "scope": scope,
+                    "state": state,
+                    "response_type": "code",
+                }
             )
+            return authorization_url + "?" + urlencode(params)
 
         async def _exchange_code(code: str, state: str, redir: str) -> ExchangeResult:
             async with httpx.AsyncClient(
