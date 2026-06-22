@@ -8,6 +8,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-06-22
+
+### Added
+- **`oauth_meta_router`** — new `extra_authorize_params` keyword argument
+  (`dict[str, str] | None`, default `None`).  Extra parameters are appended to
+  the `authorization_endpoint` URL returned in
+  `/.well-known/oauth-authorization-server`.  MCP clients use that URL verbatim
+  when redirecting users to the OIDC provider, so any hint placed here is
+  automatically forwarded — no client-side changes required.
+
+  Primary use-case: Okta’s `idp` parameter routes users directly to a
+  configured external Identity Provider, bypassing the Okta login page::
+
+      app.include_router(oauth_meta_router(
+          ...
+          extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+      ))
+
 ## [0.2.2] — 2026-06-22
 
 ### Added
