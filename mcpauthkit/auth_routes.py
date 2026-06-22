@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import time
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Request
@@ -37,6 +38,7 @@ def oauth_meta_router(
     server_base_url: str,
     issuer_url: str,
     client_id: str,
+    extra_authorize_params: dict[str, str] | None = None,
 ) -> APIRouter:
     """
     Return an ``APIRouter`` with well-known OAuth metadata routes and a DCR
@@ -52,6 +54,26 @@ def oauth_meta_router(
         ``"https://login.microsoftonline.com/{tenant}/v2.0"``.
     client_id
         Pre-registered public client ID returned by the DCR façade.
+    extra_authorize_params
+        Optional extra query parameters appended to the
+        ``authorization_endpoint`` in the
+        ``/.well-known/oauth-authorization-server`` response.  MCP clients
+        read that URL and use it verbatim when redirecting the user to the
+        OIDC provider, so any hint placed here is automatically forwarded.
+
+        Use this for provider-specific routing parameters that fall outside
+        the standard OAuth 2.0 / OIDC spec.  For example, Okta's ``idp``
+        parameter bypasses the Okta login page and routes users directly to
+        a configured external Identity Provider::
+
+            app.include_router(oauth_meta_router(
+                server_base_url=settings.server_base_url,
+                issuer_url="https://your-org.okta.com/oauth2/default",
+                client_id=settings.okta_client_id,
+                extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+            ))
+
+        Default: ``None`` (no extra params — fully retro-compatible).
     """
     router = APIRouter()
     base = server_base_url.rstrip("/")
@@ -84,6 +106,10 @@ def oauth_meta_router(
                     jwks_ep = meta.get("jwks_uri", jwks_ep)
         except Exception as exc:
             logger.warning("Could not fetch OIDC metadata: %s", exc)
+
+        if extra_authorize_params:
+            sep = "&" if "?" in auth_ep else "?"
+            auth_ep += sep + urlencode(extra_authorize_params)
 
         return JSONResponse(
             {

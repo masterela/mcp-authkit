@@ -85,6 +85,66 @@ def test_authorization_server_pkce_supported(client):
     assert "S256" in data["code_challenge_methods_supported"]
 
 
+def test_authorization_server_no_extra_params_by_default(client):
+    """Default (extra_authorize_params=None) does not append any extra query params."""
+    data = client.get("/.well-known/oauth-authorization-server").json()
+    assert "idp=" not in data["authorization_endpoint"]
+
+
+def test_authorization_server_extra_params_appended():
+    """extra_authorize_params are appended to authorization_endpoint."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    app = FastAPI()
+    app.include_router(
+        oauth_meta_router(
+            server_base_url=SERVER,
+            issuer_url=ISSUER,
+            client_id=CLIENT_ID,
+            extra_authorize_params={"idp": "0oaz2r21a8RBmZyOL0h7"},
+        )
+    )
+    tc = TestClient(app, raise_server_exceptions=False)
+
+    oidc_doc = {
+        "authorization_endpoint": "https://org.okta.com/oauth2/default/v1/authorize",
+        "token_endpoint": "https://org.okta.com/oauth2/default/v1/token",
+        "jwks_uri": "https://org.okta.com/oauth2/default/v1/keys",
+    }
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = oidc_doc
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("mcpauthkit.auth_routes.httpx.AsyncClient", return_value=mock_client):
+        data = tc.get("/.well-known/oauth-authorization-server").json()
+
+    assert "idp=0oaz2r21a8RBmZyOL0h7" in data["authorization_endpoint"]
+    # Standard OIDC fields are still present
+    assert data["token_endpoint"] == "https://org.okta.com/oauth2/default/v1/token"
+
+
+def test_authorization_server_extra_params_fallback_no_oidc():
+    """extra_authorize_params appended even when OIDC discovery is unreachable."""
+    app = FastAPI()
+    app.include_router(
+        oauth_meta_router(
+            server_base_url=SERVER,
+            issuer_url=ISSUER,
+            client_id=CLIENT_ID,
+            extra_authorize_params={"idp": "abc123", "prompt": "login"},
+        )
+    )
+    tc = TestClient(app, raise_server_exceptions=False)
+    data = tc.get("/.well-known/oauth-authorization-server").json()
+    auth_ep = data["authorization_endpoint"]
+    assert "idp=abc123" in auth_ep
+    assert "prompt=login" in auth_ep
+
+
 def test_authorization_server_uses_oidc_config(client):
     """When OIDC discovery returns 200, its endpoints override the defaults."""
     from unittest.mock import AsyncMock, MagicMock, patch
